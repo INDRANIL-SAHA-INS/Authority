@@ -1,0 +1,20 @@
+ uvicorn src.api.main:app --reload
+
+Your current backend detects faces and visualizes them, but it does not crop out individual face images or return them for embedding/vectorization.
+
+To achieve your goal (face recognition pipeline), you need to:
+
+Detect faces and extract (crop) each face from the image.
+(Optionally) Return these cropped faces to the frontend or process them server-side for embeddings.
+Compute vector embeddings for each face (using a face recognition model).
+Compare these embeddings to your database for recognition.
+How to proceed:
+
+Modify your /api/v1/detect endpoint to also return the cropped face images (as base64 or URLs), or add a new endpoint for this.
+Add logic to compute embeddings for each face (using a model like FaceNet, ArcFace, etc.).
+Add logic to compare embeddings with your database.
+Would you like to:
+
+Add face cropping and return the cropped faces in the API response?
+Add embedding extraction and matching logic as well?
+Let me know which step you want to implement next, and I’ll guide you through it.

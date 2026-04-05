@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Face Detection Web Interface</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f7f7f7;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      background: #fff;
+      margin-top: 40px;
+      padding: 24px 32px 32px 32px;
+      border-radius: 12px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+      max-width: 480px;
+      width: 100%;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 18px;
+      color: #222;
+    }
+    .upload-area {
+      border: 2px dashed #4a90e2;
+      border-radius: 8px;
+      padding: 32px 0;
+      text-align: center;
+      color: #4a90e2;
+      background: #f0f6fc;
+      cursor: pointer;
+      margin-bottom: 18px;
+      transition: background 0.2s;
+    }
+    .upload-area.dragover {
+      background: #e3f1ff;
+    }
+    #file-input {
+      display: none;
+    }
+    .image-preview {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+    .image-preview img {
+      max-width: 320px;
+      max-height: 240px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      border: 1px solid #ddd;
+    }
+    .btn {
+      background: #4a90e2;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 24px;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-bottom: 10px;
+      transition: background 0.2s;
+    }
+    .btn:disabled {
+      background: #b3d3f6;
+      cursor: not-allowed;
+    }
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #4a90e2;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 12px auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .results {
+      margin-top: 18px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 0.97rem;
+    }
+    th, td {
+      border: 1px solid #e0e0e0;
+      padding: 6px 8px;
+      text-align: center;
+    }
+    th {
+      background: #f0f6fc;
+      color: #333;
+    }
+    .error {
+      color: #d32f2f;
+      background: #fff0f0;
+      border: 1px solid #f8d7da;
+      border-radius: 6px;
+      padding: 10px;
+      margin-top: 10px;
+      text-align: center;
+    }
+    @media (max-width: 600px) {
+      .container {
+        padding: 12px 4vw 18px 4vw;
+        max-width: 98vw;
+      }
+      .image-preview img {
+        max-width: 90vw;
+      }
+    }
+    canvas {
+      position: absolute;
+      left: 0;
+      top: 0;
+      pointer-events: none;
+    }
+    .canvas-container {
+      position: relative;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Face Detection Demo</h1>
+    <div class="upload-area" id="upload-area">
+      <span id="upload-text">Click or drag an image here</span>
+      <input type="file" id="file-input" accept="image/jpeg,image/png">
+    </div>
+    <div class="image-preview" id="image-preview" style="display:none;">
+      <div class="canvas-container">
+        <img id="preview-img" src="#" alt="Preview">
+        <canvas id="bbox-canvas"></canvas>
+      </div>
+    </div>
+    <button class="btn" id="detect-btn" disabled>Detect Faces</button>
+    <div id="loading" style="display:none;">
+      <div class="spinner"></div>
+      <div>Detecting faces...</div>
+    </div>
+    <div class="results" id="results"></div>
+    <div style="margin-top: 18px;">
+      <h3>Annotated Image</h3>
+      <img id="annotated-image" style="max-width: 100%; border: 2px solid #667eea; display: none;" />
+    </div>
+    <div class="error" id="error" style="display:none;"></div>
+  </div>
+  <script>
+    const uploadArea = document.getElementById('upload-area');
+    const fileInput = document.getElementById('file-input');
+    const imagePreview = document.getElementById('image-preview');
+    const previewImg = document.getElementById('preview-img');
+    const bboxCanvas = document.getElementById('bbox-canvas');
+    const detectBtn = document.getElementById('detect-btn');
+    const loading = document.getElementById('loading');
+    const results = document.getElementById('results');
+    const errorDiv = document.getElementById('error');
+    let currentFile = null;
+    let faces = [];
+
+    // Drag and drop
+    uploadArea.addEventListener('click', () => fileInput.click());
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('dragover');
+    });
+    uploadArea.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+    });
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        handleFile(e.dataTransfer.files[0]);
+      }
+    });
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        handleFile(e.target.files[0]);
+      }
+    });
+
+    function handleFile(file) {
+      errorDiv.style.display = 'none';
+      results.innerHTML = '';
+      faces = [];
+      if (!file.type.match('image/jpeg') && !file.type.match('image/png')) {
+        showError('Only JPG and PNG images are allowed.');
+        return;
+      }
+      currentFile = file;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        previewImg.src = e.target.result;
+        previewImg.onload = function() {
+          imagePreview.style.display = 'block';
+          bboxCanvas.width = previewImg.naturalWidth;
+          bboxCanvas.height = previewImg.naturalHeight;
+          bboxCanvas.style.width = previewImg.width + 'px';
+          bboxCanvas.style.height = previewImg.height + 'px';
+          clearCanvas();
+        };
+      };
+      reader.readAsDataURL(file);
+      detectBtn.disabled = false;
+    }
+
+    function clearCanvas() {
+      const ctx = bboxCanvas.getContext('2d');
+      ctx.clearRect(0, 0, bboxCanvas.width, bboxCanvas.height);
+    }
+
+    detectBtn.addEventListener('click', async () => {
+      if (!currentFile) return;
+      errorDiv.style.display = 'none';
+      results.innerHTML = '';
+      clearCanvas();
+      detectBtn.disabled = true;
+      loading.style.display = 'block';
+      try {
+        const formData = new FormData();
+        formData.append('image', currentFile);
+        // 1. Get JSON results
+        const response = await fetch('/api/v1/detect', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await response.json();
+        loading.style.display = 'none';
+        detectBtn.disabled = false;
+        if (!response.ok || !data.success) {
+          let msg = data.error && data.error.message ? data.error.message : 'Detection failed.';
+          showError(msg);
+          return;
+        }
+        faces = data.faces || [];
+        showResults(data);
+        drawBBoxes(faces);
+        // 2. Get annotated image
+        const visualizeFormData = new FormData();
+        visualizeFormData.append('image', currentFile);
+        const visualizeResponse = await fetch('/api/v1/visualize', {
+          method: 'POST',
+          body: visualizeFormData
+        });
+        if (visualizeResponse.ok) {
+          const blob = await visualizeResponse.blob();
+          const imgUrl = URL.createObjectURL(blob);
+          const annotatedImg = document.getElementById('annotated-image');
+          annotatedImg.src = imgUrl;
+          annotatedImg.style.display = 'block';
+        }
+      } catch (err) {
+        loading.style.display = 'none';
+        detectBtn.disabled = false;
+        showError('API call failed. Please try again.');
+      }
+    });
+
+    function showResults(data) {
+      let html = `<div><b>Faces detected:</b> ${data.metadata ? data.metadata.num_faces_detected : (faces.length || 0)}</div>`;
+      if (faces.length > 0) {
+        html += `<table><thead><tr><th>Face ID</th><th>BBox [x1,y1,x2,y2]</th><th>Confidence</th></tr></thead><tbody>`;
+        faces.forEach(face => {
+          html += `<tr><td>${face.face_id || ''}</td><td>[${face.bbox.x1}, ${face.bbox.y1}, ${face.bbox.x2}, ${face.bbox.y2}]</td><td>${(face.confidence*100).toFixed(2)}%</td></tr>`;
+        });
+        html += `</tbody></table>`;
+        // Show cropped faces if available
+        if (data.cropped_faces && Array.isArray(data.cropped_faces) && data.cropped_faces.length > 0) {
+          html += `<div style="margin-top:14px;"><b>Cropped Faces:</b><div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;">`;
+          data.cropped_faces.forEach((b64, idx) => {
+            if (b64) {
+              html += `<div style="display:flex;flex-direction:column;align-items:center;"><img src='data:image/jpeg;base64,${b64}' alt='Face ${idx+1}' style='width:64px;height:64px;object-fit:cover;border:1.5px solid #4a90e2;border-radius:6px;margin-bottom:2px;'/><span style='font-size:0.85em;color:#444;'>#${idx+1}</span></div>`;
+            }
+          });
+          html += `</div></div>`;
+        }
+      }
+      results.innerHTML = html;
+    }
+
+    function showError(msg) {
+      errorDiv.textContent = msg;
+      errorDiv.style.display = 'block';
+    }
+
+    function drawBBoxes(faces) {
+      if (!faces || faces.length === 0) return;
+      const ctx = bboxCanvas.getContext('2d');
+      clearCanvas();
+      // Scale for display size
+      const scaleX = previewImg.width / previewImg.naturalWidth;
+      const scaleY = previewImg.height / previewImg.naturalHeight;
+      ctx.save();
+      faces.forEach(face => {
+        // Draw bbox
+        ctx.strokeStyle = '#00c853';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.rect(
+          face.bbox.x1 * scaleX,
+          face.bbox.y1 * scaleY,
+          (face.bbox.x2 - face.bbox.x1) * scaleX,
+          (face.bbox.y2 - face.bbox.y1) * scaleY
+        );
+        ctx.stroke();
+        // Draw landmarks
+        if (face.landmarks) {
+          ctx.fillStyle = '#d50000';
+          Object.values(face.landmarks).forEach(pt => {
+            ctx.beginPath();
+            ctx.arc(pt[0] * scaleX, pt[1] * scaleY, 3, 0, 2 * Math.PI);
+            ctx.fill();
+          });
+        }
+        // Draw label
+        ctx.font = 'bold 13px Arial';
+        ctx.fillStyle = '#222';
+        ctx.fillText(
+          `${face.face_id || ''} (${(face.confidence*100).toFixed(1)}%)`,
+          face.bbox.x1 * scaleX + 2,
+          face.bbox.y1 * scaleY - 6
+        );
+      });
+      ctx.restore();
+    }
+  </script>
+</body>
+</html>

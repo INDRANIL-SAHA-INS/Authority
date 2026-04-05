@@ -1,0 +1,64 @@
+# ==============================================================================
+# Git Ignore Configuration
+# ==============================================================================
+
+# General / OS
+# ------------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+*.log
+*.pem
+.vscode/
+.idea/
+*.tsbuildinfo
+
+# Environment Files
+# ------------------------------------------------------------------------------
+.env
+.env*
+!.env.example
+
+# Next.js / Node.js (authority)
+# ------------------------------------------------------------------------------
+authority/node_modules/
+authority/.next/
+authority/out/
+authority/build/
+authority/coverage/
+authority/.pnp
+authority/.pnp.*
+authority/.yarn/*
+!authority/.yarn/patches
+!authority/.yarn/plugins
+!authority/.yarn/releases
+!authority/.yarn/versions
+authority/generated/prisma/
+authority/next-env.d.ts
+
+# Python / Face Detection (authority_ai_service_backend/face-detection-pipeline)
+# ------------------------------------------------------------------------------
+authority_ai_service_backend/face-detection-pipeline/venv/
+authority_ai_service_backend/face-detection-pipeline/.venv/
+authority_ai_service_backend/face-detection-pipeline/env/
+authority_ai_service_backend/face-detection-pipeline/__pycache__/
+authority_ai_service_backend/face-detection-pipeline/.pytest_cache/
+authority_ai_service_backend/face-detection-pipeline/*.py[cod]
+authority_ai_service_backend/face-detection-pipeline/*$py.class
+authority_ai_service_backend/face-detection-pipeline/.ipynb_checkpoints/
+authority_ai_service_backend/face-detection-pipeline/data/outputs/
+authority_ai_service_backend/face-detection-pipeline/data/uploads/
+# If data folder contains large test images/datasets:
+# authority_ai_service_backend/face-detection-pipeline/data/test_images/
+
+# General patterns that may apply to subfolders
+# ------------------------------------------------------------------------------
+node_modules/
+__pycache__/
+venv/
+.venv/
+env/
+.next/
+dist/
+build/
+bin/
+obj/

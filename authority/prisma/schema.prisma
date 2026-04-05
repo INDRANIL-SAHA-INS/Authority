@@ -1,0 +1,570 @@
+
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Department {
+  department_id      BigInt    @id @default(autoincrement()) @map("department_id")
+  department_code    String?
+  department_name    String?
+  department_head_id BigInt?   @unique
+  office_location    String?
+  contact_email      String?
+  contact_phone      String?
+  established_year   Int?
+  status             String?
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+  department_head    Teacher?  @relation("DepartmentHead", fields: [department_head_id], references: [teacher_id])
+  teachers           Teacher[] @relation("TeacherDepartment")
+  programs           Program[]
+
+  @@unique([department_code])
+  @@map("departments")
+}
+
+model Classroom {
+  classroom_id          BigInt              @id @default(autoincrement()) @map("classroom_id")
+  room_number           String?             @unique
+  building_name         String?
+  floor_number          Int?
+  seating_capacity      Int?
+
+  projector_available   Boolean?
+  smart_board_available Boolean?
+  status                String?
+  created_at            DateTime            @default(now())
+  updated_at            DateTime            @updatedAt
+  sections              Section[]
+  timetables            Timetable[]
+  attendance_sessions   AttendanceSession[]
+
+  @@map("classrooms")
+}
+
+model TimeSlot {
+  time_slot_id     BigInt      @id @default(autoincrement()) @map("time_slot_id")
+  slot_name        String      @unique
+  start_time       DateTime?   @db.Time
+  end_time         DateTime?   @db.Time
+  duration_minutes Int?
+  is_break         Boolean?
+  created_at       DateTime    @default(now())
+  updated_at       DateTime    @updatedAt
+  timetables       Timetable[]
+
+  @@map("time_slots")
+}
+
+model Subject {
+  subject_id           BigInt                     @id @default(autoincrement()) @map("subject_id")
+  subject_code         String?
+  subject_name         String?
+  program_id           BigInt
+  semester_number      Int?
+  subject_order        Int?
+  subject_category     String?
+  credits              Int?
+  subject_type         String?
+  lecture_hours        Int?
+  tutorial_hours       Int?
+  practical_hours      Int?
+  syllabus_version     String?
+  description          String?                    @db.Text
+  created_at           DateTime                   @default(now())
+  updated_at           DateTime                   @updatedAt
+  program              Program                    @relation(fields: [program_id], references: [program_id])
+  teacher_assignments  TeacherSubjectAssignment[]
+  timetables           Timetable[]
+  attendance_sessions  AttendanceSession[]
+  attendance_summaries AttendanceSummary[]
+  backlogs             StudentBacklog[]
+  enrollments          SubjectEnrollment[]
+  exams                Exam[]
+
+  @@unique([subject_code])
+  @@index([program_id])
+  @@index([program_id, semester_number])
+  @@map("subjects")
+}
+
+model Teacher {
+  teacher_id           BigInt                     @id @default(autoincrement()) @map("teacher_id")
+  employee_id          String?
+  first_name           String?
+  last_name            String?
+  gender               String?
+  date_of_birth        DateTime?                  @db.Date
+  department_id        BigInt
+  designation          String?
+  qualification        String?
+  specialization       String?
+  joining_date         DateTime?                  @db.Date
+  experience_years     Int?
+  phone_number         String?
+  email                String?
+  office_room          String?
+  employment_type      String?
+  salary_grade         String?
+  status               String?
+  created_at           DateTime                   @default(now())
+  updated_at           DateTime                   @updatedAt
+  department           Department                 @relation("TeacherDepartment", fields: [department_id], references: [department_id])
+  department_headed    Department?                @relation("DepartmentHead")
+  coordinated_programs Program[]                  @relation("ProgramCoordinator")
+  subject_assignments  TeacherSubjectAssignment[]
+  timetables           Timetable[]
+  attendance_sessions  AttendanceSession[]
+
+  @@unique([employee_id])
+  @@unique([email])
+  @@index([department_id])
+  @@index([status])
+  @@map("teachers")
+}
+
+model Program {
+  program_id             BigInt                   @id @default(autoincrement()) @map("program_id")
+  department_id          BigInt
+  program_code           String?
+  program_name           String?
+  degree_type            String?
+  program_duration_years Int?
+  total_semesters        Int?
+  description            String?                  @db.Text
+  accreditation_body     String?
+  program_coordinator_id BigInt?
+  status                 String?
+  created_at             DateTime                 @default(now())
+  updated_at             DateTime                 @updatedAt
+  department             Department               @relation(fields: [department_id], references: [department_id])
+  coordinator            Teacher?                 @relation("ProgramCoordinator", fields: [program_coordinator_id], references: [teacher_id])
+  batches                Batch[]
+  students               Student[]
+  subjects               Subject[]
+
+  @@unique([program_code])
+  @@index([department_id])
+  @@index([program_coordinator_id])
+  @@index([status])
+  @@map("programs")
+}
+
+model Batch {
+  batch_id                 BigInt                     @id @default(autoincrement()) @map("batch_id")
+  program_id               BigInt
+  admission_year           Int?
+  expected_graduation_year Int?
+  batch_name               String?
+  period_id                BigInt?
+  total_students           Int?
+  status                   String?
+  created_at               DateTime                   @default(now())
+  updated_at               DateTime                   @updatedAt
+  program                  Program                    @relation(fields: [program_id], references: [program_id])
+  academic_period          AcademicPeriod?            @relation(fields: [period_id], references: [period_id])
+  sections                 Section[]
+  students                 Student[]
+  teacher_assignments      TeacherSubjectAssignment[]
+  timetables               Timetable[]
+  attendance_sessions      AttendanceSession[]
+  exams                    Exam[]
+  batch_semesters          BatchSemester[]
+
+  @@index([program_id])
+  @@index([admission_year])
+  @@index([status])
+  @@map("batches")
+}
+
+model Section {
+  section_id          BigInt                     @id @default(autoincrement()) @map("section_id")
+  batch_id            BigInt
+  section_name        String?
+  classroom_id        BigInt?
+  section_strength    Int?
+  floor_number        Int?
+  building_name       String?
+  status              String?
+  created_at          DateTime                   @default(now())
+  updated_at          DateTime                   @updatedAt
+  batch               Batch                      @relation(fields: [batch_id], references: [batch_id])
+  classroom           Classroom?                 @relation(fields: [classroom_id], references: [classroom_id])
+  students            Student[]
+  teacher_assignments TeacherSubjectAssignment[]
+  timetables          Timetable[]
+  attendance_sessions AttendanceSession[]
+
+  @@index([batch_id])
+  @@index([classroom_id])
+  @@map("sections")
+}
+
+model Student {
+  student_id             BigInt              @id @default(autoincrement()) @map("student_id")
+  university_roll_number String?
+  registration_number    String?
+  first_name             String?
+  last_name              String?
+  gender                 String?
+  date_of_birth          DateTime?           @db.Date
+  batch_id               BigInt
+  section_id             BigInt
+  program_id             BigInt
+  admission_date         DateTime?           @db.Date
+  student_status         String?
+  has_backlogs           Boolean             @default(false)
+  email                  String?
+  phone_number           String?
+  address                String?
+  city                   String?
+  state                  String?
+  country                String?
+  postal_code            String?
+  blood_group            String?
+  nationality            String?
+  category               String?
+  created_at             DateTime            @default(now())
+  updated_at             DateTime            @updatedAt
+  batch                  Batch               @relation(fields: [batch_id], references: [batch_id])
+  section                Section             @relation(fields: [section_id], references: [section_id])
+  program                Program             @relation(fields: [program_id], references: [program_id])
+  guardian               Guardian?
+  face_data              FaceData[]
+  attendance_records     AttendanceRecord[]
+  attendance_summaries   AttendanceSummary[]
+  library_visit_logs     LibraryVisitLog[]
+  backlogs               StudentBacklog[]
+  enrollments            SubjectEnrollment[]
+  exam_results           ExamResult[]
+
+  @@unique([university_roll_number])
+  @@unique([registration_number])
+  @@index([batch_id])
+  @@index([section_id])
+  @@index([program_id])
+  @@index([student_status])
+  @@index([has_backlogs])
+  @@index([email])
+  @@map("students")
+}
+
+model Guardian {
+  guardian_id     BigInt   @id @default(autoincrement()) @map("guardian_id")
+  student_id      BigInt   @unique
+  father_name     String?
+  mother_name     String?
+  guardian_name   String?
+  relation_type   String?
+  phone_number    String?
+  alternate_phone String?
+  email           String?
+  occupation      String?
+  address         String?
+  city            String?
+  state           String?
+  postal_code     String?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  student         Student  @relation(fields: [student_id], references: [student_id])
+
+  @@map("guardians")
+}
+
+model StudentBacklog {
+  backlog_id          BigInt   @id @default(autoincrement()) @map("backlog_id")
+  student_id          BigInt
+  subject_id          BigInt
+  semester_number     Int
+  attempt_number      Int      @default(1)
+  status              String   @default("PENDING")
+  cleared_in_semester Int?
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+  student             Student  @relation(fields: [student_id], references: [student_id])
+  subject             Subject  @relation(fields: [subject_id], references: [subject_id])
+
+  @@unique([student_id, subject_id, attempt_number])
+  @@index([student_id, status])
+  @@index([subject_id])
+  @@map("student_backlogs")
+}
+
+model SubjectEnrollment {
+  enrollment_id   BigInt          @id @default(autoincrement()) @map("enrollment_id")
+  student_id      BigInt
+  subject_id      BigInt
+  period_id       BigInt
+  status          String?         @default("ACTIVE") // ACTIVE, DROPPED, COMPLETED
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
+  student         Student         @relation(fields: [student_id], references: [student_id])
+  subject         Subject         @relation(fields: [subject_id], references: [subject_id])
+  period          AcademicPeriod  @relation(fields: [period_id], references: [period_id])
+
+  @@unique([student_id, subject_id, period_id])
+  @@index([student_id, period_id])
+  @@index([subject_id])
+  @@map("subject_enrollments")
+}
+
+model Exam {
+  exam_id         BigInt             @id @default(autoincrement()) @map("exam_id")
+  subject_id      BigInt
+  batch_id        BigInt
+  period_id       BigInt
+  exam_type       String       // INTERNAL_1, INTERNAL_2, MID_TERM, END_TERM
+  total_marks     Float
+  passing_marks   Float
+  exam_date       DateTime?
+  status          String?      @default("HIDDEN") // HIDDEN, OPEN, CLOSED, DECLARED
+  created_at      DateTime     @default(now())
+  updated_at      DateTime     @updatedAt
+  subject         Subject      @relation(fields: [subject_id], references: [subject_id])
+  batch           Batch        @relation(fields: [batch_id], references: [batch_id])
+  period          AcademicPeriod @relation(fields: [period_id], references: [period_id])
+  results         ExamResult[]
+
+  @@index([subject_id, batch_id])
+  @@map("exams")
+}
+
+model ExamResult {
+  result_id      BigInt   @id @default(autoincrement()) @map("result_id")
+  exam_id        BigInt
+  student_id     BigInt
+  marks_obtained Float?
+  is_absent      Boolean  @default(false)
+  is_pass        Boolean?
+  remarks        String?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+  exam           Exam     @relation(fields: [exam_id], references: [exam_id])
+  student        Student  @relation(fields: [student_id], references: [student_id])
+
+  @@unique([exam_id, student_id])
+  @@index([student_id])
+  @@map("exam_results")
+}
+
+model TeacherSubjectAssignment {
+  assignment_id           BigInt          @id @default(autoincrement()) @map("assignment_id")
+  teacher_id              BigInt
+  subject_id              BigInt
+  batch_id                BigInt
+  section_id              BigInt
+  period_id               BigInt
+  assigned_hours_per_week Int?
+  assignment_role         String?
+  assignment_status       String?         @default("ACTIVE") // ACTIVE, COMPLETED, REVOKED
+  created_at              DateTime        @default(now())
+  updated_at              DateTime        @updatedAt
+  teacher                 Teacher         @relation(fields: [teacher_id], references: [teacher_id])
+  subject                 Subject         @relation(fields: [subject_id], references: [subject_id])
+  batch                   Batch           @relation(fields: [batch_id], references: [batch_id])
+  section                 Section         @relation(fields: [section_id], references: [section_id])
+  period                  AcademicPeriod  @relation(fields: [period_id], references: [period_id])
+
+  @@unique([teacher_id, subject_id, batch_id, section_id, period_id])
+  @@index([teacher_id, period_id])
+  @@index([subject_id, period_id])
+  @@index([batch_id, section_id, period_id])
+  @@map("teacher_subject_assignments")
+}
+
+model Timetable {
+  timetable_id        BigInt              @id @default(autoincrement()) @map("timetable_id")
+  teacher_id          BigInt
+  subject_id          BigInt
+  batch_id            BigInt
+  section_id          BigInt
+  classroom_id        BigInt
+  period_id           BigInt
+  day_of_week         String
+  time_slot_id        BigInt
+  timetable_status    String?
+  created_at          DateTime            @default(now())
+  updated_at          DateTime            @updatedAt
+  teacher             Teacher             @relation(fields: [teacher_id], references: [teacher_id])
+  subject             Subject             @relation(fields: [subject_id], references: [subject_id])
+  batch               Batch               @relation(fields: [batch_id], references: [batch_id])
+  section             Section             @relation(fields: [section_id], references: [section_id])
+  classroom           Classroom           @relation(fields: [classroom_id], references: [classroom_id])
+  time_slot           TimeSlot            @relation(fields: [time_slot_id], references: [time_slot_id])
+  period              AcademicPeriod      @relation(fields: [period_id], references: [period_id])
+  attendance_sessions AttendanceSession[]
+
+  @@unique([section_id, day_of_week, time_slot_id, period_id])
+  @@unique([teacher_id, day_of_week, time_slot_id, period_id])
+  @@unique([classroom_id, day_of_week, time_slot_id, period_id])
+  @@index([section_id, period_id])
+  @@index([subject_id, period_id])
+  @@index([batch_id, period_id])
+  @@index([teacher_id, period_id])
+  @@map("timetables")
+}
+
+model FaceData {
+  face_id             BigInt    @id @default(autoincrement()) @map("face_id")
+  student_id          BigInt
+  image_path          String?
+  face_encoding       String?   @db.Text
+  dataset_version     String?
+  capture_date        DateTime? @db.Date
+  image_quality_score Float?
+  status              String?
+  model_name          String?
+  face_angle          String?   // e.g. "Front", "Left", "Right"
+  is_primary          Boolean   @default(true)
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+  student             Student   @relation(fields: [student_id], references: [student_id])
+
+  @@index([student_id])
+  @@index([status])
+  @@map("face_data")
+}
+
+model AttendanceSession {
+  session_id         BigInt             @id @default(autoincrement()) @map("session_id")
+  timetable_id       BigInt
+  teacher_id         BigInt
+  subject_id         BigInt
+  batch_id           BigInt
+  section_id         BigInt
+  classroom_id       BigInt
+  session_date       DateTime?          @db.Date
+  start_time         DateTime?          @db.Time
+  end_time           DateTime?          @db.Time
+  attendance_method  String?
+  total_students     Int?
+  present_count      Int?
+  absent_count       Int?
+  class_photo_url    String?
+  created_at         DateTime           @default(now())
+  updated_at         DateTime           @updatedAt
+  timetable          Timetable          @relation(fields: [timetable_id], references: [timetable_id])
+  teacher            Teacher            @relation(fields: [teacher_id], references: [teacher_id])
+  subject            Subject            @relation(fields: [subject_id], references: [subject_id])
+  batch              Batch              @relation(fields: [batch_id], references: [batch_id])
+  section            Section            @relation(fields: [section_id], references: [section_id])
+  classroom          Classroom          @relation(fields: [classroom_id], references: [classroom_id])
+  attendance_records AttendanceRecord[]
+
+  @@unique([timetable_id, session_date])
+  @@index([session_date])
+  @@index([subject_id, session_date])
+  @@index([batch_id, section_id, subject_id])
+  @@index([teacher_id, session_date])
+  @@map("attendance_sessions")
+}
+
+model AttendanceRecord {
+  attendance_id        BigInt            @id @default(autoincrement()) @map("attendance_id")
+  session_id           BigInt
+  student_id           BigInt
+  attendance_status    String?
+  detection_confidence Float?
+  capture_time         DateTime?
+  marked_by            String?
+  remarks              String?
+  captured_face_url    String?
+  created_at           DateTime          @default(now())
+  updated_at           DateTime          @updatedAt
+  session              AttendanceSession @relation(fields: [session_id], references: [session_id])
+  student              Student           @relation(fields: [student_id], references: [student_id])
+
+  @@unique([session_id, student_id])
+  @@index([student_id, attendance_status])
+  @@index([session_id])
+  @@map("attendance_records")
+}
+
+model AttendanceSummary {
+  summary_id            BigInt          @id @default(autoincrement()) @map("summary_id")
+  student_id            BigInt
+  subject_id            BigInt
+  period_id             BigInt
+  total_classes         Int?
+  classes_attended      Int?
+  classes_missed        Int?
+  attendance_percentage Float?
+  last_updated          DateTime        @default(now())
+  updated_at            DateTime        @updatedAt
+  student               Student         @relation(fields: [student_id], references: [student_id])
+  subject               Subject         @relation(fields: [subject_id], references: [subject_id])
+  period                AcademicPeriod  @relation(fields: [period_id], references: [period_id])
+
+  @@unique([student_id, subject_id, period_id])
+  @@index([student_id, period_id])
+  @@index([subject_id, period_id])
+  @@index([attendance_percentage])
+  @@map("attendance_summary")
+}
+
+model LibraryVisitLog {
+  library_log_id       BigInt    @id @default(autoincrement()) @map("library_log_id")
+  library_user_ref     BigInt    @map("library_user_ref")
+  library_entry_at     DateTime  @map("library_entry_at")
+  library_exit_at      DateTime? @map("library_exit_at")
+
+  // States: 'ACTIVE' (student inside) | 'CLOSED' (exited) | 'AUTO_CLOSED' (force-closed at night)
+  library_session_state String   @default("ACTIVE") @map("library_session_state")
+
+  library_created_on   DateTime  @default(now()) @map("library_created_on")
+  library_updated_on   DateTime  @updatedAt @map("library_updated_on")
+  student              Student   @relation(fields: [library_user_ref], references: [student_id])
+
+  // Ensures only one 'ACTIVE' session per student exists at a time
+  @@unique([library_user_ref, library_session_state], name: "uq_one_active_session_per_student")
+  @@index([library_user_ref])
+  @@index([library_session_state])
+  @@index([library_user_ref, library_session_state])
+  @@index([library_entry_at])
+  @@map("library_visit_logs")
+}
+
+model AcademicPeriod {
+  period_id       BigInt             @id @default(autoincrement()) @map("period_id")
+  name            String             // e.g., "Aug-Dec 2024"
+  academic_year   String             // e.g., "2024-25"
+  term_type       String?            // e.g., "ODD", "EVEN"
+  is_active       Boolean            @default(false)
+  start_date      DateTime?
+  end_date        DateTime?
+  created_at      DateTime           @default(now())
+  updated_at      DateTime           @updatedAt
+  batches         Batch[]
+  enrollments     SubjectEnrollment[]
+  assignments     TeacherSubjectAssignment[]
+  timetables      Timetable[]
+  exams           Exam[]
+  attendance_summaries AttendanceSummary[]
+  batch_semesters BatchSemester[]
+
+  @@unique([name, academic_year])
+  @@map("academic_periods")
+}
+
+model BatchSemester {
+  batch_semester_id BigInt         @id @default(autoincrement()) @map("batch_semester_id")
+  batch_id          BigInt
+  period_id         BigInt
+  semester_number   Int
+  status            String?        @default("ACTIVE") // ACTIVE, COMPLETED
+  created_at        DateTime       @default(now())
+  updated_at        DateTime       @updatedAt
+  batch             Batch          @relation(fields: [batch_id], references: [batch_id])
+  period            AcademicPeriod @relation(fields: [period_id], references: [period_id])
+
+  @@unique([batch_id, period_id])
+  @@index([batch_id])
+  @@index([period_id])
+  @@map("batch_semesters")
+}
