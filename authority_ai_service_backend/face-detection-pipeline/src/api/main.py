@@ -230,6 +230,8 @@ def enroll_student(image: UploadFile = File(...)):
     Accepts 1 image of a student, uses DeepFace to validate the face count and confidence,
     and returns a 512-dimensional vector (ArcFace) for storage in the database.
     """
+    print("\n[API START] ---> ENROLL_STUDENT ---------------------")
+    print(f"      [Step] Uploaded Enrollment Image: {image.filename}")
     # 1. Base API Validation
     validate_uploaded_file(image, max_size_mb=settings.max_file_size_mb)
     
@@ -298,6 +300,8 @@ async def extract_classroom_faces(image: UploadFile = File(...)):
     Accepts a high-resolution classroom image, finds EVERY face, 
     generates 512-d ArcFace vectors, and returns crops for auditing.
     """
+    print("\n[API START] ---> EXTRACT_CLASSROOM_FACES ------------")
+    print(f"      [Step] Uploaded Classroom Image: {image.filename}")
     # 1. Image Validation
     validate_uploaded_file(image, max_size_mb=25) # Slightly higher limit for classroom photos
     

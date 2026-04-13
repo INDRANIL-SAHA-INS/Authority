@@ -1,0 +1,90 @@
+[
+  {
+    "timestamp": "2026-04-12T01:29:33.207452",
+    "job_title": null,
+    "company": null,
+    "status": "applied",
+    "url": "http://localhost:3000/job_form",
+    "error": ""
+  },
+  {
+    "timestamp": "2026-04-12T01:41:47.085908",
+    "job_title": null,
+    "company": null,
+    "status": "applied",
+    "url": "http://localhost:3000/job_form",
+    "error": ""
+  },
+  {
+    "timestamp": "2026-04-12T02:04:19.049944",
+    "job_title": "Experienced Technician, Design Support",
+    "company": "WSP",
+    "status": "applied",
+    "url": "https://in.alllocaljobs.com/job#google_vignette",
+    "error": ""
+  },
+  {
+    "timestamp": "2026-04-12T02:40:06.119300",
+    "job_title": "Experienced Technician, Design Support",
+    "company": "WSP",
+    "status": "applied",
+    "url": "https://in.alllocaljobs.com/job#google_vignette",
+    "error": ""
+  },
+  {
+    "timestamp": "2026-04-12T02:43:32.612263",
+    "job_title": "Experienced Technician, Design Support",
+    "company": "WSP",
+    "status": "applied",
+    "url": "https://in.alllocaljobs.com/job#google_vignette",
+    "error": ""
+  },
+  {
+    "timestamp": "2026-04-12T02:49:33.821309",
+    "job_title": "Experienced Technician, Design Support",
+    "company": "WSP",
+    "status": "applied",
+    "url": "https://in.alllocaljobs.com/job#google_vignette",
+    "error": ""
+  },
+  {
+    "timestamp": "2026-04-13T15:27:38.731180",
+    "job_title": null,
+    "company": null,
+    "status": "applied",
+    "url": "https://in.alllocaljobs.com/job",
+    "error": ""
+  },
+  {
+    "timestamp": "2026-04-13T15:29:54.168059",
+    "job_title": null,
+    "company": null,
+    "status": "applied",
+    "url": "https://in.alllocaljobs.com/job#google_vignette",
+    "error": ""
+  },
+  {
+    "timestamp": "2026-04-13T15:42:26.561320",
+    "job_title": null,
+    "company": null,
+    "status": "applied",
+    "url": "https://job-boards.greenhouse.io/canonical/jobs/2804965",
+    "error": "Field mapping failed after 3 attempts: Schema validation failed: Failed to parse FormFillPlan from completion {\"actions\": [{\"selector\": \"#question_30123090\", \"action\": \"change\", \"value\": \"Describe your experience using or contributing to open source software*\"}, {\"selector\": \"#question_30123091\", \"action\": \"change\", \"value\": \"Describe your experience with JavaScript, TypeScript and SCSS*\"}, {\"selector\": \"#question_41836836\", \"action\": \"change\", \"value\": \"Please share your rationale or evidence for the high school performance selections above. Make reference to  provincial, state or nation-wide scoring systems, rankings, or recognition awards, or to competitive or selective college entrance results such as SAT or ACT scores, JAMB, matriculation results, IB results etc. We recognise every system is different but we will ask you to justify your selections above.\"}, {\"selector\": \"[name=\\\"g-recaptcha-response\\\"]\", \"action\": \"change\", \"value\": \"g-recaptcha-response\"}, {\"selector\": \"#first_name\", \"action\": \"change\", \"value\": \"First Name*\"}, {\"selector\": \"#last_name\", \"action\": \"change\", \"value\": \"Last Name*\"}, {\"selector\": \"#email\", \"action\": \"change\", \"value\": \"Email*\"}, {\"selector\": \"#phone\", \"action\": \"change\", \"value\": \"Phone\"}, {\"selector\": \"#resume\", \"action\": \"change\", \"value\": \"Attach\"}, {\"selector\": \"#question_30123099\", \"action\": \"change\", \"value\": \"Github\"}, {\"selector\": \"#question_37321935\", \"action\": \"change\", \"value\": \"What was your bachelor's university degree result, or expected result if you have not yet graduated? Please include the grading system to help us understand your result e.g. \\u201885 out of 100\\u2019, \\u20182:1 (Grading system: first class, 2:1, 2:2, third class)\\u2019 or \\u2018GPA score of 3.8/4.0 (predicted)\\u2019. We have hired outstanding individuals who did not attend or complete university. If this describes you, please continue with your application and enter \\u2018no degree\\u2019.*\"}, {\"selector\": \"#question_44072254\", \"action\": \"change\", \"value\": \"if you selected None of the above in the previous question, please describe how your university grading system works and country of graduation.\"}, {\"selector\": \"#question_37412314\", \"action\": \"change\", \"value\": \"Website\"}, {\"selector\": \"#question_37412318\", \"action\": \"change\", \"value\": \"LinkedIn Profile\"}]}. Got: 14 validation errors for FormFillPlan\nactions.0.action\n  Value error, action must be one of {'upload_cv', 'check', 'click_radio', 'select_option', 'type'}, got 'change' [type=value_error, input_value='change', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\nactions.1.action\n  Value error, action must be one of {'upload_cv', 'check', 'click_radio', 'select_option', 'type'}, got 'change' [type=value_error, input_value='change', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\nactions.2.action\n  Value error, action must be one of {'upload_cv', 'check', 'click_radio', 'select_option', 'type'}, got 'change' [type=value_error, input_value='change', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\nactions.3.action\n  Value error, action must be one of {'upload_cv', 'check', 'click_radio', 'select_option', 'type'}, got 'change' [type=value_error, input_value='change', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\nactions.4.action\n  Value error, action must be one of {'upload_cv', 'check', 'click_radio', 'select_option', 'type'}, got 'change' [type=value_error, input_value='change', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\nactions.5.action\n  Value error, action must be one of {'upload_cv', 'check', 'click_radio', 'select_option', 'type'}, got 'change' [type=value_error, input_value='change', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\nactions.6.action\n  Value error, action must be one of {'upload_cv', 'check', 'click_radio', 'select_option', 'type'}, got 'change' [type=value_error, input_value='change', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\nactions.7.action\n  Value error, action must be one of {'upload_cv', 'check', 'click_radio', 'select_option', 'type'}, got 'change' [type=value_error, input_value='change', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\nactions.8.action\n  Value error, action must be one of {'upload_cv', 'check', 'click_radio', 'select_option', 'type'}, got 'change' [type=value_error, input_value='change', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\nactions.9.action\n  Value error, action must be one of {'upload_cv', 'check', 'click_radio', 'select_option', 'type'}, got 'change' [type=value_error, input_value='change', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\nactions.10.action\n  Value error, action must be one of {'upload_cv', 'check', 'click_radio', 'select_option', 'type'}, got 'change' [type=value_error, input_value='change', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\nactions.11.action\n  Value error, action must be one of {'upload_cv', 'check', 'click_radio', 'select_option', 'type'}, got 'change' [type=value_error, input_value='change', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\nactions.12.action\n  Value error, action must be one of {'upload_cv', 'check', 'click_radio', 'select_option', 'type'}, got 'change' [type=value_error, input_value='change', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\nactions.13.action\n  Value error, action must be one of {'upload_cv', 'check', 'click_radio', 'select_option', 'type'}, got 'change' [type=value_error, input_value='change', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\nFor troubleshooting, visit: https://python.langchain.com/docs/troubleshooting/errors/OUTPUT_PARSING_FAILURE "
+  },
+  {
+    "timestamp": "2026-04-13T15:51:13.786512",
+    "job_title": null,
+    "company": null,
+    "status": "applied",
+    "url": "https://job-boards.greenhouse.io/canonical/jobs/2804965",
+    "error": ""
+  },
+  {
+    "timestamp": "2026-04-13T16:27:20.159614",
+    "job_title": null,
+    "company": null,
+    "status": "applied",
+    "url": "https://job-boards.greenhouse.io/canonical/jobs/2804965",
+    "error": ""
+  }
+]

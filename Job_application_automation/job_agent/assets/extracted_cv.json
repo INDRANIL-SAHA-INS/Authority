@@ -1,0 +1,71 @@
+{
+  "name": "Indranil Saha",
+  "email": "indranilsaha777@gmail.com",
+  "phone": "8942926737",
+  "location": "Bangalore,India",
+  "linkedin": "https://www.linkedin.com/in/indranilsaha6/",
+  "github": "https://github.com/INDRANIL-SAHA-INS",
+  "summary": "",
+  "skills": [
+    "Full Stack Web Development",
+    "Basics of Machine Learning",
+    "Basic Data Structures & Alogrithms",
+    "api developement",
+    "Typescripts",
+    "Python",
+    "MySQL",
+    "JavaScript",
+    "ReactJS",
+    "NextJs",
+    "Express.js",
+    "Prisma",
+    "NumPy",
+    "Pandas",
+    "Git & GitHub",
+    "Linux"
+  ],
+  "experience": [
+    {
+      "company": "Sanchari Drive Ads Limited",
+      "title": "Technical Head (co-founder)",
+      "location": "Bangalore,India",
+      "start": null,
+      "end": null,
+      "bullets": [
+        "Led the development of the underlying technology for our geolocation based advertising systems.",
+        "Created internet connected displays on moving vehicles, delivering dynamic ads based on the vehicle's real time location"
+      ]
+    }
+  ],
+  "education": [
+    {
+      "institution": "RV University",
+      "degree": "Bachelor of Computer Applications",
+      "field": null,
+      "gpa": 9.2,
+      "year": {
+        "start": "aug2024",
+        "end": "jun2028"
+      }
+    }
+  ],
+  "projects": [
+    {
+      "name": "Healix-Medmange",
+      "description": "An AI-powered health platform that helps traveling doctors provide consistent and efficient healthcare across multiple rural communities. It enables seamless patient data collection, storage, and retrieval, eliminating the need for paper records. The platform supports chronic disease tracking, AI-driven insights for predictive health analysis, and automated alerts for timely follow-ups. With a focus on Responsible AI and data privacy, Healix empowers healthcare providers with decision support tools to improve patient outcomes. Designed for commercial deployment, it ensures scalability and reliability for real-world medical use.",
+      "tech": [
+        "AI",
+        "Data Collection",
+        "Data Storage",
+        "Predictive Analysis",
+        "Automated Alerts"
+      ]
+    }
+  ],
+  "certifications": [
+    "Web Development Fundamentals - Credly",
+    "McKinsey.org Forward Program"
+  ],
+  "cover_letter": "",
+  "extra": {}
+}

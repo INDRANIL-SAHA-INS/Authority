@@ -96,6 +96,7 @@ model Subject {
 
 model Teacher {
   teacher_id           BigInt                     @id @default(autoincrement()) @map("teacher_id")
+  user_id              BigInt?                    @unique @map("user_id")
   employee_id          String?
   first_name           String?
   last_name            String?
@@ -108,13 +109,13 @@ model Teacher {
   joining_date         DateTime?                  @db.Date
   experience_years     Int?
   phone_number         String?
-  email                String?
   office_room          String?
   employment_type      String?
   salary_grade         String?
   status               String?
   created_at           DateTime                   @default(now())
   updated_at           DateTime                   @updatedAt
+  user                 User?                      @relation(fields: [user_id], references: [user_id])
   department           Department                 @relation("TeacherDepartment", fields: [department_id], references: [department_id])
   department_headed    Department?                @relation("DepartmentHead")
   coordinated_programs Program[]                  @relation("ProgramCoordinator")
@@ -123,7 +124,6 @@ model Teacher {
   attendance_sessions  AttendanceSession[]
 
   @@unique([employee_id])
-  @@unique([email])
   @@index([department_id])
   @@index([status])
   @@map("teachers")
@@ -208,6 +208,7 @@ model Section {
 
 model Student {
   student_id             BigInt              @id @default(autoincrement()) @map("student_id")
+  user_id                BigInt?             @unique @map("user_id")
   university_roll_number String?
   registration_number    String?
   first_name             String?
@@ -220,7 +221,6 @@ model Student {
   admission_date         DateTime?           @db.Date
   student_status         String?
   has_backlogs           Boolean             @default(false)
-  email                  String?
   phone_number           String?
   address                String?
   city                   String?
@@ -232,6 +232,7 @@ model Student {
   category               String?
   created_at             DateTime            @default(now())
   updated_at             DateTime            @updatedAt
+  user                   User?               @relation(fields: [user_id], references: [user_id])
   batch                  Batch               @relation(fields: [batch_id], references: [batch_id])
   section                Section             @relation(fields: [section_id], references: [section_id])
   program                Program             @relation(fields: [program_id], references: [program_id])
@@ -239,7 +240,6 @@ model Student {
   face_data              FaceData[]
   attendance_records     AttendanceRecord[]
   attendance_summaries   AttendanceSummary[]
-  library_visit_logs     LibraryVisitLog[]
   backlogs               StudentBacklog[]
   enrollments            SubjectEnrollment[]
   exam_results           ExamResult[]
@@ -251,7 +251,6 @@ model Student {
   @@index([program_id])
   @@index([student_status])
   @@index([has_backlogs])
-  @@index([email])
   @@map("students")
 }
 
@@ -510,24 +509,63 @@ model AttendanceSummary {
 
 model LibraryVisitLog {
   library_log_id       BigInt    @id @default(autoincrement()) @map("library_log_id")
-  library_user_ref     BigInt    @map("library_user_ref")
+  user_id              BigInt    @map("user_id")
+
   library_entry_at     DateTime  @map("library_entry_at")
   library_exit_at      DateTime? @map("library_exit_at")
 
-  // States: 'ACTIVE' (student inside) | 'CLOSED' (exited) | 'AUTO_CLOSED' (force-closed at night)
+  // States: 'ACTIVE' (user inside) | 'CLOSED' (exited) | 'AUTO_CLOSED' (force-closed at night)
   library_session_state String   @default("ACTIVE") @map("library_session_state")
 
   library_created_on   DateTime  @default(now()) @map("library_created_on")
   library_updated_on   DateTime  @updatedAt @map("library_updated_on")
-  student              Student   @relation(fields: [library_user_ref], references: [student_id])
+  
+  user                 User      @relation(fields: [user_id], references: [user_id])
 
-  // Ensures only one 'ACTIVE' session per student exists at a time
-  @@unique([library_user_ref, library_session_state], name: "uq_one_active_session_per_student")
-  @@index([library_user_ref])
+  // Ensures only one 'ACTIVE' session per user exists at a time
+  @@unique([user_id, library_session_state], name: "uq_active_user_session")
+  
+  @@index([user_id])
   @@index([library_session_state])
-  @@index([library_user_ref, library_session_state])
   @@index([library_entry_at])
   @@map("library_visit_logs")
+}
+
+model User {
+  user_id       BigInt    @id @default(autoincrement()) @map("user_id")
+  email         String    @unique
+  password_hash String?
+  role          String    @default("STUDENT") // STUDENT, TEACHER, ADMIN
+  is_active     Boolean   @default(true)
+  profile_image_url String?
+  last_login_at DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  student            Student?
+  teacher            Teacher?
+  admin              Admin?
+  library_visit_logs LibraryVisitLog[]
+
+  @@map("users")
+}
+
+model Admin {
+  admin_id      BigInt    @id @default(autoincrement()) @map("admin_id")
+  user_id       BigInt    @unique @map("user_id")
+  
+  employee_id   String?   @unique @map("employee_id")
+  first_name    String?
+  last_name     String?
+  phone_number  String?
+  designation   String?   // e.g., "Registrar", "IT Administrator"
+  
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  
+  user          User      @relation(fields: [user_id], references: [user_id])
+
+  @@map("admins")
 }
 
 model AcademicPeriod {

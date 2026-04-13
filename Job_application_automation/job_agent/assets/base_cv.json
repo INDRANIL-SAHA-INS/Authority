@@ -1,0 +1,77 @@
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "phone": "+91-9999999999",
+  "location": "Bangalore, India",
+  "linkedin": "linkedin.com/in/johndoe",
+  "github": "github.com/johndoe",
+
+  "summary": "Full-stack software engineer with 3+ years of experience building scalable APIs and data-driven web applications. Proficient in Python, FastAPI, and React. Strong background in system design and cross-functional collaboration.",
+
+  "skills": {
+    "languages":   ["Python", "TypeScript", "JavaScript", "SQL"],
+    "frameworks":  ["FastAPI", "Next.js", "React", "LangChain"],
+    "databases":   ["PostgreSQL", "MongoDB", "Redis"],
+    "tools":       ["Docker", "Git", "Playwright", "Prisma"],
+    "cloud":       ["AWS (EC2, S3, Lambda)", "GCP"],
+    "other":       ["REST APIs", "LLM Integration", "CI/CD", "Agile"]
+  },
+
+  "experience": [
+    {
+      "company":   "Acme Corp",
+      "title":     "Software Engineer",
+      "location":  "Bangalore, India",
+      "start":     "Jan 2022",
+      "end":       "Present",
+      "bullets": [
+        "Built a real-time attendance system using face recognition (DeepFace + FastAPI), reducing manual tracking effort by 80%.",
+        "Designed and deployed RESTful APIs serving 10,000+ daily requests with <200ms p99 latency.",
+        "Led migration of monolithic codebase to microservices, improving deployment frequency by 3x.",
+        "Mentored 2 junior engineers and conducted weekly code reviews."
+      ]
+    },
+    {
+      "company":   "Startup XYZ",
+      "title":     "Junior Developer",
+      "location":  "Remote",
+      "start":     "Jun 2021",
+      "end":       "Dec 2021",
+      "bullets": [
+        "Developed a React dashboard for real-time analytics, cutting report generation time from 2 hours to 5 minutes.",
+        "Integrated third-party payment gateway (Razorpay), enabling 500+ transactions/day.",
+        "Wrote unit and integration tests achieving 85% code coverage."
+      ]
+    }
+  ],
+
+  "education": [
+    {
+      "institution": "National Institute of Technology",
+      "degree":      "B.Tech",
+      "field":       "Computer Science and Engineering",
+      "gpa":         "8.4 / 10",
+      "year":        "2021"
+    }
+  ],
+
+  "projects": [
+    {
+      "name":        "Job Application Automation Agent",
+      "description": "LangGraph-based AI agent that autonomously navigates job portals, fills application forms using Playwright, and generates tailored CVs using an LLM.",
+      "tech":        ["Python", "LangGraph", "Playwright", "Ollama", "ReportLab"]
+    },
+    {
+      "name":        "AI Attendance System",
+      "description": "End-to-end face recognition pipeline for college attendance using DeepFace, FastAPI, and Next.js with a Prisma/PostgreSQL backend.",
+      "tech":        ["Python", "FastAPI", "DeepFace", "Next.js", "Prisma"]
+    }
+  ],
+
+  "certifications": [
+    "AWS Certified Developer – Associate (2023)",
+    "Google Professional Data Engineer (2022)"
+  ],
+
+  "cover_letter": "I am genuinely excited to apply for this role. Throughout my career I have focused on building systems that are not just functional but reliable and scalable at real-world traffic. I thrive in fast-paced environments and bring a strong bias toward shipping clean, well-tested code. I would love the opportunity to bring this energy to your team."
+}

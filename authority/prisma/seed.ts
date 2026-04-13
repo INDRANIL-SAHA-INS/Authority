@@ -70,16 +70,16 @@ async function seed_time_slots() {
   try {
     console.log("🌱 Starting time slot seeding...");
 
-    // Times as specified: 9:10 start, 1hr classes, lunch 1:10-1:50, resume till 4:50
+    // Times as specified: 9:00 start, 1hr classes, lunch 1:00-2:00, till 5:00
     const slots = [
-      { name: "Slot 1", start: "09:10", end: "10:10", is_break: false },
-      { name: "Slot 2", start: "10:10", end: "11:10", is_break: false },
-      { name: "Slot 3", start: "11:10", end: "12:10", is_break: false },
-      { name: "Slot 4", start: "12:10", end: "13:10", is_break: false },
-      { name: "Lunch Break", start: "13:10", end: "13:50", is_break: true },
-      { name: "Slot 5", start: "13:50", end: "14:50", is_break: false },
-      { name: "Slot 6", start: "14:50", end: "15:50", is_break: false },
-      { name: "Slot 7", start: "15:50", end: "16:50", is_break: false },
+      { name: "Slot 1", start: "09:00", end: "10:00", is_break: false },
+      { name: "Slot 2", start: "10:00", end: "11:00", is_break: false },
+      { name: "Slot 3", start: "11:00", end: "12:00", is_break: false },
+      { name: "Slot 4", start: "12:00", end: "13:00", is_break: false },
+      { name: "Lunch Break", start: "13:00", end: "14:00", is_break: true },
+      { name: "Slot 5", start: "14:00", end: "15:00", is_break: false },
+      { name: "Slot 6", start: "15:00", end: "16:00", is_break: false },
+      { name: "Slot 7", start: "16:00", end: "17:00", is_break: false },
     ];
 
     for (const slot of slots) {
@@ -225,6 +225,7 @@ async function seed_teachers() {
 
     const teacherData = [
       {
+        employee_id: "EMP-SOCSE-001",
         first_name: "Alice",
         last_name: "Smith",
         gender: "Female",
@@ -241,6 +242,7 @@ async function seed_teachers() {
         employment_type: "Full-time",
       },
       {
+        employee_id: "EMP-SOCSE-002",
         first_name: "Robert",
         last_name: "Brown",
         gender: "Male",
@@ -257,6 +259,7 @@ async function seed_teachers() {
         employment_type: "Full-time",
       },
       {
+        employee_id: "EMP-SOCSE-003",
         first_name: "Charlie",
         last_name: "Green",
         gender: "Male",
@@ -273,6 +276,7 @@ async function seed_teachers() {
         employment_type: "Full-time",
       },
       {
+        employee_id: "EMP-SOCSE-004",
         first_name: "David",
         last_name: "White",
         gender: "Male",
@@ -289,6 +293,7 @@ async function seed_teachers() {
         employment_type: "Full-time",
       },
       {
+        employee_id: "EMP-SOCSE-005",
         first_name: "Eve",
         last_name: "Black",
         gender: "Female",
@@ -305,6 +310,7 @@ async function seed_teachers() {
         employment_type: "Full-time",
       },
       {
+        employee_id: "EMP-SOL-001",
         first_name: "John",
         last_name: "Doe",
         gender: "Male",
@@ -325,22 +331,16 @@ async function seed_teachers() {
     for (let i = 0; i < teacherData.length; i++) {
       const data = teacherData[i];
       
-      // 1. Check if teacher already exists by email
-      const existing = await prisma.teacher.findUnique({ where: { email: data.email } });
+      // 1. Check if teacher already exists by their unique employee_id (deterministic)
+      const existing = await prisma.teacher.findUnique({
+        where: { employee_id: data.employee_id }
+      });
 
-      // 2. Decide the Employee ID:
-      // If exists: Use their current one.
-      // If new: Generate a random string (4 chars) + i+1 (incremental)
-      let employeeId: string;
-      if (existing?.employee_id) {
-        employeeId = existing.employee_id;
-      } else {
-        const randomStr = crypto.randomBytes(2).toString("hex").toUpperCase();
-        employeeId = `EMP-${data.dept.department_code}-${randomStr}-${String(i + 1).padStart(3, "0")}`;
-      }
+      // 2. employee_id is now hardcoded in seed data — no random generation
+      const employeeId = data.employee_id;
 
       await prisma.teacher.upsert({
-        where: { email: data.email },
+        where: { employee_id: employeeId },
         update: {
           first_name: data.first_name,
           last_name: data.last_name,
@@ -361,7 +361,6 @@ async function seed_teachers() {
           designation: data.designation,
           qualification: data.qualification,
           specialization: data.specialization,
-          email: data.email,
           phone_number: data.phone_number,
           date_of_birth: data.date_of_birth,
           joining_date: data.joining_date,
@@ -434,6 +433,13 @@ async function seed_subjects() {
       { subject_code: "BCA-401", subject_name: "Software Engineering", program_id: bca.program_id, semester_number: 4, credits: 3, subject_type: "Theory" },
       { subject_code: "BCA-402", subject_name: "Java Programming", program_id: bca.program_id, semester_number: 4, credits: 4, subject_type: "Practical" },
       { subject_code: "BCA-403", subject_name: "Computer Networks", program_id: bca.program_id, semester_number: 4, credits: 3, subject_type: "Theory" },
+      
+      // New Subjects for Alice Smith (Teacher ID 1)
+      { subject_code: "BCA-501", subject_name: "Artificial Intelligence", program_id: bca.program_id, semester_number: 5, credits: 4, subject_type: "Theory" },
+      { subject_code: "BCA-502", subject_name: "Cloud Computing", program_id: bca.program_id, semester_number: 5, credits: 4, subject_type: "Theory" },
+      { subject_code: "BCA-503", subject_name: "Data Science", program_id: bca.program_id, semester_number: 5, credits: 4, subject_type: "Theory" },
+      { subject_code: "BCA-504", subject_name: "Mobile App Development", program_id: bca.program_id, semester_number: 5, credits: 4, subject_type: "Theory" },
+      { subject_code: "BCA-505", subject_name: "Cyber Security", program_id: bca.program_id, semester_number: 5, credits: 4, subject_type: "Theory" },
     ];
 
     for (const subject of subjects) {
@@ -620,14 +626,12 @@ async function seed_students() {
           update: {
             first_name: firstName,
             last_name: lastName,
-            email: email,
             gender: gender,
             student_status: "ACTIVE",
           },
           create: {
             first_name: firstName,
             last_name: lastName,
-            email: email,
             university_roll_number: roll,
             registration_number: `REG-${roll}`,
             gender: gender,
@@ -790,11 +794,11 @@ async function seed_teacher_assignments() {
     console.log("🌱 Starting teacher subject assignment seeding...");
 
     // 1. Find our 5 Teachers
-    const t1 = await prisma.teacher.findFirst({ where: { email: "alice.smith@college.edu" } });
-    const t2 = await prisma.teacher.findFirst({ where: { email: "charlie.green@college.edu" } });
-    const t3 = await prisma.teacher.findFirst({ where: { email: "david.white@college.edu" } });
-    const t4 = await prisma.teacher.findFirst({ where: { email: "eve.black@college.edu" } });
-    const t5 = await prisma.teacher.findFirst({ where: { email: "robert.brown@college.edu" } });
+    const t1 = await prisma.teacher.findUnique({ where: { employee_id: "EMP-SOCSE-001" } }); // Alice Smith
+    const t2 = await prisma.teacher.findUnique({ where: { employee_id: "EMP-SOCSE-003" } }); // Charlie Green
+    const t3 = await prisma.teacher.findUnique({ where: { employee_id: "EMP-SOCSE-004" } }); // David White
+    const t4 = await prisma.teacher.findUnique({ where: { employee_id: "EMP-SOCSE-005" } }); // Eve Black
+    const t5 = await prisma.teacher.findUnique({ where: { employee_id: "EMP-SOCSE-002" } }); // Robert Brown
 
     if (!t1 || !t2 || !t3 || !t4 || !t5) throw new Error("Could not find all 5 teachers for BCA.");
 
@@ -812,24 +816,38 @@ async function seed_teacher_assignments() {
 
     if (!bcaSectionA) throw new Error("Could not find BCA Section A.");
 
-    // 3. Find 5 BCA subjects to assign
+    // 3. Find subjects to assign
     const s1 = await prisma.subject.findUnique({ where: { subject_code: "BCA-301" } }); // DBMS
     const s2 = await prisma.subject.findUnique({ where: { subject_code: "BCA-302" } }); // OS
     const s3 = await prisma.subject.findUnique({ where: { subject_code: "BCA-401" } }); // SE
     const s4 = await prisma.subject.findUnique({ where: { subject_code: "BCA-402" } }); // Java
     const s5 = await prisma.subject.findUnique({ where: { subject_code: "BCA-403" } }); // CN
 
-    if (!s1 || !s2 || !s3 || !s4 || !s5) throw new Error("Could not find all BCA subjects.");
+    // New subjects for Alice
+    const sa1 = await prisma.subject.findUnique({ where: { subject_code: "BCA-501" } }); // AI
+    const sa2 = await prisma.subject.findUnique({ where: { subject_code: "BCA-502" } }); // Cloud
+    const sa3 = await prisma.subject.findUnique({ where: { subject_code: "BCA-503" } }); // Data Sci
+    const sa4 = await prisma.subject.findUnique({ where: { subject_code: "BCA-504" } }); // Mobile
+    const sa5 = await prisma.subject.findUnique({ where: { subject_code: "BCA-505" } }); // Cyber
+
+    if (!s1 || !s2 || !s3 || !s4 || !s5 || !sa1 || !sa2 || !sa3 || !sa4 || !sa5) throw new Error("Could not find all BCA subjects.");
 
     const activePeriodId = bcaSectionA.batch.batch_semesters[0]?.period_id;
     if (!activePeriodId) throw new Error("BCA batch has no active semester period.");
 
     const assignments = [
-      { teacher_id: t1.teacher_id, subject_id: s1.subject_id, batch_id: bcaSectionA.batch_id, section_id: bcaSectionA.section_id, period_id: activePeriodId, role: "Primary Instructor", hours: 4, status: "ACTIVE" },
+      // Original assignments for other teachers
       { teacher_id: t2.teacher_id, subject_id: s2.subject_id, batch_id: bcaSectionA.batch_id, section_id: bcaSectionA.section_id, period_id: activePeriodId, role: "Primary Instructor", hours: 4, status: "ACTIVE" },
       { teacher_id: t3.teacher_id, subject_id: s3.subject_id, batch_id: bcaSectionA.batch_id, section_id: bcaSectionA.section_id, period_id: activePeriodId, role: "Primary Instructor", hours: 4, status: "ACTIVE" },
       { teacher_id: t4.teacher_id, subject_id: s4.subject_id, batch_id: bcaSectionA.batch_id, section_id: bcaSectionA.section_id, period_id: activePeriodId, role: "Primary Instructor", hours: 4, status: "ACTIVE" },
       { teacher_id: t5.teacher_id, subject_id: s5.subject_id, batch_id: bcaSectionA.batch_id, section_id: bcaSectionA.section_id, period_id: activePeriodId, role: "Primary Instructor", hours: 4, status: "ACTIVE" },
+      
+      // Alice gets the 5 new subjects (one for each class slot)
+      { teacher_id: t1.teacher_id, subject_id: sa1.subject_id, batch_id: bcaSectionA.batch_id, section_id: bcaSectionA.section_id, period_id: activePeriodId, role: "Primary Instructor", hours: 5, status: "ACTIVE" },
+      { teacher_id: t1.teacher_id, subject_id: sa2.subject_id, batch_id: bcaSectionA.batch_id, section_id: bcaSectionA.section_id, period_id: activePeriodId, role: "Primary Instructor", hours: 5, status: "ACTIVE" },
+      { teacher_id: t1.teacher_id, subject_id: sa3.subject_id, batch_id: bcaSectionA.batch_id, section_id: bcaSectionA.section_id, period_id: activePeriodId, role: "Primary Instructor", hours: 5, status: "ACTIVE" },
+      { teacher_id: t1.teacher_id, subject_id: sa4.subject_id, batch_id: bcaSectionA.batch_id, section_id: bcaSectionA.section_id, period_id: activePeriodId, role: "Primary Instructor", hours: 5, status: "ACTIVE" },
+      { teacher_id: t1.teacher_id, subject_id: sa5.subject_id, batch_id: bcaSectionA.batch_id, section_id: bcaSectionA.section_id, period_id: activePeriodId, role: "Primary Instructor", hours: 5, status: "ACTIVE" },
     ];
 
     for (const assign of assignments) {
@@ -871,80 +889,128 @@ async function seed_timetables() {
   try {
     console.log("🌱 Starting complex timetable seeding (BCA Section A)...");
 
-    // 1. Fetch Resources
-    const teachers = await prisma.teacher.findMany({
-      where: { department: { department_code: "SOCSE" } },
-      take: 5
-    });
+    // 1. Fetch prerequisites
     const bcaSectionA = await prisma.section.findFirst({ where: { section_name: "BCA - Section A" } });
-    const subjects = await prisma.subject.findMany({
-      where: { program: { program_code: "BCA" } },
-      take: 5
-    });
     const period = await prisma.academicPeriod.findFirst({ where: { is_active: true } });
+    const room = await prisma.classroom.findUnique({ where: { room_number: "C-101" } });
     const slots = await prisma.timeSlot.findMany({
       where: { is_break: false },
       orderBy: { start_time: "asc" }
     });
-    const room = await prisma.classroom.findUnique({ where: { room_number: "C-101" } });
 
-    if (teachers.length < 5 || subjects.length < 5 || !bcaSectionA || !period || !room) {
-        throw new Error("Missing prerequisite data for complex timetable.");
+    if (!bcaSectionA || !period || !room) {
+      throw new Error("Missing prerequisite data for timetable seeding.");
+    }
+
+    // 2. Fetch ONLY the officially verified TeacherSubjectAssignments for this section
+    //    This guarantees the timetable only uses teacher-subject pairs that are formally approved
+    const assignments = await prisma.teacherSubjectAssignment.findMany({
+      where: {
+        section_id: bcaSectionA.section_id,
+        period_id: period.period_id,
+        assignment_status: "ACTIVE",
+      },
+      include: { teacher: true, subject: true },
+    });
+
+    if (assignments.length === 0) {
+      throw new Error("No active teacher assignments found. Run seed_teacher_assignments() first.");
     }
 
     const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-    
-    for (let dayIndex = 0; dayIndex < days.length; dayIndex++) {
-        const day = days[dayIndex];
-        
-        for (let slotIndex = 0; slotIndex < 5; slotIndex++) {
-            const timeSlot = slots[slotIndex];
-            
-            // Logic to shift teacher & subject every day
-            // Day 0, Slot 0: T0, S0
-            // Day 0, Slot 1: T1, S1 (T1 is not T0, rule satisfied)
-            // Day 1, Slot 0: T4, S4
-            // Day 1, Slot 1: T0, S0
-            const teacherIdx = (slotIndex + (days.length - dayIndex)) % teachers.length;
-            const subjectIdx = (slotIndex + dayIndex) % subjects.length;
-            
-            const teacher = teachers[teacherIdx];
-            const subject = subjects[subjectIdx];
 
-            await prisma.timetable.upsert({
-                where: {
-                    section_id_day_of_week_time_slot_id_period_id: {
-                        section_id: bcaSectionA.section_id,
-                        day_of_week: day,
-                        time_slot_id: timeSlot.time_slot_id,
-                        period_id: period.period_id,
-                    }
-                },
-                update: {
-                    teacher_id: teacher.teacher_id,
-                    subject_id: subject.subject_id,
-                    classroom_id: room.classroom_id,
-                    timetable_status: "ACTIVE"
-                },
-                create: {
-                    teacher_id: teacher.teacher_id,
-                    subject_id: subject.subject_id,
-                    batch_id: bcaSectionA.batch_id,
-                    section_id: bcaSectionA.section_id,
-                    classroom_id: room.classroom_id,
-                    period_id: period.period_id,
-                    day_of_week: day,
-                    time_slot_id: timeSlot.time_slot_id,
-                    timetable_status: "ACTIVE"
-                }
-            });
+    // 3. For each day, each assignment gets a fixed, dedicated time slot
+    //    Slot 1 → Assignment 0 (e.g. Alice teaches DBMS)
+    //    Slot 2 → Assignment 1 (e.g. Charlie teaches OS)
+    //    ...and so on. Same pattern every day.
+    // 3. Define Alice's 5 subjects (from her assignments)
+    const aliceAssignments = assignments.filter(a => a.teacher_id === assignments.find(x => x.teacher.employee_id === "EMP-SOCSE-001")?.teacher_id);
+    const otherAssignments = assignments.filter(a => a.teacher_id !== aliceAssignments[0]?.teacher_id);
+
+    for (let dayIndex = 0; dayIndex < days.length; dayIndex++) {
+      const day = days[dayIndex];
+      
+      // Seed Alice's 5 slots (Slot 1 to 5) with rotation
+      for (let slotIndex = 0; slotIndex < 5; slotIndex++) {
+        // Rotate subjects each day: (slotIndex + dayIndex) % 5
+        const assignment = aliceAssignments[(slotIndex + dayIndex) % aliceAssignments.length];
+        const timeSlot = slots[slotIndex];
+
+        if (!assignment || !timeSlot) continue;
+
+        await prisma.timetable.upsert({
+          where: {
+            section_id_day_of_week_time_slot_id_period_id: {
+              section_id: bcaSectionA.section_id,
+              day_of_week: day,
+              time_slot_id: timeSlot.time_slot_id,
+              period_id: period.period_id,
+            },
+          },
+          update: {
+            teacher_id: assignment.teacher_id,
+            subject_id: assignment.subject_id,
+            classroom_id: room.classroom_id,
+            timetable_status: "ACTIVE",
+          },
+          create: {
+            teacher_id: assignment.teacher_id,
+            subject_id: assignment.subject_id,
+            batch_id: bcaSectionA.batch_id,
+            section_id: bcaSectionA.section_id,
+            classroom_id: room.classroom_id,
+            period_id: period.period_id,
+            day_of_week: day,
+            time_slot_id: timeSlot.time_slot_id,
+            timetable_status: "ACTIVE",
+          },
+        });
+      }
+
+      // Seed other teachers in Slot 6 and Slot 7 (Cycle the remaining 4 subjects)
+      const extraSlots = slots.slice(5); // [Slot 6, Slot 7]
+      for (let s = 0; s < extraSlots.length; s++) {
+        const otherIndex = (dayIndex * extraSlots.length + s) % otherAssignments.length;
+        const otherAssign = otherAssignments[otherIndex];
+        const extraSlot = extraSlots[s];
+        
+        if (otherAssign && extraSlot) {
+           await prisma.timetable.upsert({
+            where: {
+              section_id_day_of_week_time_slot_id_period_id: {
+                section_id: bcaSectionA.section_id,
+                day_of_week: day,
+                time_slot_id: extraSlot.time_slot_id,
+                period_id: period.period_id,
+              },
+            },
+            update: {
+              teacher_id: otherAssign.teacher_id,
+              subject_id: otherAssign.subject_id,
+              classroom_id: room.classroom_id,
+              timetable_status: "ACTIVE",
+            },
+            create: {
+              teacher_id: otherAssign.teacher_id,
+              subject_id: otherAssign.subject_id,
+              batch_id: bcaSectionA.batch_id,
+              section_id: bcaSectionA.section_id,
+              classroom_id: room.classroom_id,
+              period_id: period.period_id,
+              day_of_week: day,
+              time_slot_id: extraSlot.time_slot_id,
+              timetable_status: "ACTIVE",
+            },
+          });
         }
-        console.log(`✅ Fully seeded 5-day Timetable for ${day} (BCA Section A).`);
+      }
+      console.log(`✅ Timetable seeded for ${day} (Alice: 5 slots, Others: 2 slots).`);
     }
   } catch (error) {
     console.error("❌ Error seeding timetables:", error);
   }
 }
+
 
 async function seed_attendance_sessions() {
     try {
@@ -1135,6 +1201,74 @@ async function seed_attendance_summaries() {
     }
 }
 
+async function seed_users() {
+  try {
+    console.log("🌱 Starting user seeding (1 Student + 1 Teacher)...");
+
+    // ----------------------------------------------------------
+    // USER FOR STUDENT: Aarav Sharma
+    // Email matches what seed_students() generates
+    // ----------------------------------------------------------
+    const aaravStudent = await prisma.student.findFirst({
+      where: { first_name: "Aarav", last_name: "Sharma" }
+    });
+
+    if (!aaravStudent) {
+      throw new Error("Student Aarav Sharma not found. Run seed_students() first.");
+    }
+
+    const studentUser = await prisma.user.upsert({
+      where: { email: "aaravsharmabca24@rvu.edu.in" },
+      update: { is_active: true },
+      create: {
+        email: "aaravsharmabca24@rvu.edu.in",
+        password_hash: "hashed_temp_password_123", // Replace with bcrypt hash in production
+        role: "STUDENT",
+        is_active: true,
+      }
+    });
+
+    // Link User → Student
+    await prisma.student.update({
+      where: { student_id: aaravStudent.student_id },
+      data: { user_id: studentUser.user_id }
+    });
+    console.log(`✅ User created for Student: Aarav Sharma (Email: ${studentUser.email}, User ID: ${studentUser.user_id})`);
+
+    // ----------------------------------------------------------
+    // USER FOR TEACHER: Alice Smith
+    // ----------------------------------------------------------
+    const aliceTeacher = await prisma.teacher.findFirst({
+      where: { first_name: "Alice", last_name: "Smith" }
+    });
+
+    if (!aliceTeacher) {
+      throw new Error("Teacher Alice Smith not found. Run seed_teachers() first.");
+    }
+
+    const teacherUser = await prisma.user.upsert({
+      where: { email: "alice.smith@college.edu" },
+      update: { is_active: true },
+      create: {
+        email: "alice.smith@college.edu",
+        password_hash: "hashed_temp_password_456", // Replace with bcrypt hash in production
+        role: "TEACHER",
+        is_active: true,
+      }
+    });
+
+    // Link User → Teacher
+    await prisma.teacher.update({
+      where: { teacher_id: aliceTeacher.teacher_id },
+      data: { user_id: teacherUser.user_id }
+    });
+    console.log(`✅ User created for Teacher: Alice Smith (Email: ${teacherUser.email}, User ID: ${teacherUser.user_id})`);
+
+  } catch (error) {
+    console.error("❌ Error seeding users:", error);
+  }
+}
+
 async function main() {
   try {
     await seed_classrooms();
@@ -1154,7 +1288,8 @@ async function main() {
     await seed_attendance_sessions();
     await seed_attendance_records();
     await seed_attendance_summaries();
-    console.log("✨ All seed data (including Attendance System and Summaries) finished successfully.");
+    await seed_users();
+    console.log("✨ All seed data finished successfully.");
   } catch (error) {
     console.error("❌ Seeding failed:", error);
     process.exit(1);
@@ -1164,3 +1299,4 @@ async function main() {
 }
 
 main();
+
