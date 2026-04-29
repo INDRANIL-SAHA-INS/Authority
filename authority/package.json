@@ -11,15 +11,20 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.4.2",
     "@prisma/client": "^7.4.2",
+    "bcryptjs": "^3.0.3",
     "dotenv": "^17.3.1",
+    "jose": "^6.2.3",
     "jsqr": "^1.4.0",
     "next": "16.1.6",
+    "next-auth": "^5.0.0-beta.31",
     "pg": "^8.20.0",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.19.37",
     "@types/pg": "^8.18.0",
     "@types/react": "^19",

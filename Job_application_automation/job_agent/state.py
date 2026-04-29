@@ -28,6 +28,9 @@ class JobAgentState(MessagesState):
     form_fields: list[dict] = Field(default_factory=list)
     # e.g. [{"name": "email", "type": "text", "required": True}, ...]
 
+    form_metadata: dict = Field(default_factory=dict)
+    # e.g. {"contains_captcha": True, "primary_submit_selector": "button#submit"}
+
     # CV
     cv_path: Optional[str] = None  # path to generated PDF
     cv_data: dict = Field(default_factory=dict)

@@ -6,6 +6,3 @@ export async function GET() {
     message: "API is ready for more requests" 
   }, { status: 200 });
 }
-export async function POST() {  
-
-}

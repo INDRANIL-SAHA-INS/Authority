@@ -12,7 +12,7 @@ from nodes.refine_fields import refine_fields_node
 
 async def run_test():
     # LINK: The Greenhouse form you were testing
-    test_url = "https://in.alllocaljobs.com/job-bZuW2VZGa/job-apply" 
+    test_url = "https://job-boards.greenhouse.io/remotecom/jobs/6529613003" 
     
     print(f"\n[TEST] Running Semantic Extraction Pipeline on: {test_url}")
     

@@ -1,0 +1,21 @@
+# --- API Framework ---
+fastapi>=0.100.0
+uvicorn[standard]
+pydantic>=2.0.0
+python-dotenv
+python-multipart      # required by FastAPI for UploadFile / multipart forms
+
+# --- Marks Extraction Service ---
+pandas
+pdfplumber
+openpyxl
+
+# --- Mail Agent Service ---
+langchain-core>=0.1.0
+langchain-community>=0.0.10
+langgraph>=0.0.30
+langchain-ollama
+google-auth-oauthlib>=1.0.0
+google-api-python-client>=2.0.0
+google-auth-httplib2
+google-auth

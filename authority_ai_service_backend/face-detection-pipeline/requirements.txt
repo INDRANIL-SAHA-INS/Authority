@@ -16,24 +16,27 @@ fastapi>=0.100.0
 uvicorn[standard]
 python-multipart
 requests
+httpx
 
-# Utilities
+# LangChain & AI Agent (Mail Agent)
+langchain-core>=0.1.0
+langchain-community>=0.0.10
+langgraph>=0.0.30
+langchain-ollama
+langchain-openai  # Optional, but useful for many agent patterns
+
+# Google Workspace / Gmail Integration
+google-auth-oauthlib>=1.0.0
+google-api-python-client>=2.0.0
+google-auth-httplib2
+google-auth
+
+# Utilities & Config
 python-dotenv
 pydantic>=2.0.0
 pydantic-settings
-
-# LangChain & LangGraph
-langchain-core
-langchain-community
-langgraph
-langchain-ollama
-
-# Google APIs (for Gmail)
-google-auth-oauthlib
-google-api-python-client
-google-auth-httplib2
+typing-extensions>=4.5.0
 
 # Testing
 pytest
 pytest-asyncio
-httpx

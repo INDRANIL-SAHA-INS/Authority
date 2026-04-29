@@ -65,7 +65,13 @@ export async function GET(req: NextRequest) {
         section: {
           select: {
             section_id: true,
-            section_name: true
+            section_name: true,
+            classroom: {
+              select: {
+                room_number: true,
+                building_name: true
+              }
+            }
           }
         }
       }
@@ -83,12 +89,14 @@ export async function GET(req: NextRequest) {
       include: {
         subject: {
           select: {
+            subject_id: true,
             subject_code: true,
             subject_name: true
           }
         },
         section: {
           select: {
+            section_id: true,
             section_name: true
           }
         },
@@ -109,8 +117,10 @@ export async function GET(req: NextRequest) {
     // 4. Arrange Timetable Day-wise
     interface TimetableEntry {
       id: string;
+      subjectId: string;
       subjectCode: string | null;
       subjectName: string | null;
+      sectionId: string;
       sectionName: string | null;
       room: string | null;
       building: string | null;
@@ -127,8 +137,10 @@ export async function GET(req: NextRequest) {
         .filter(row => row.day_of_week === day)
         .map(row => ({
           id: row.timetable_id.toString(),
+          subjectId: row.subject.subject_id.toString(),
           subjectCode: row.subject.subject_code,
           subjectName: row.subject.subject_name,
+          sectionId: row.section.section_id.toString(),
           sectionName: row.section.section_name,
           room: row.classroom.room_number,
           building: row.classroom.building_name,
@@ -144,6 +156,8 @@ export async function GET(req: NextRequest) {
       subject: a.subject,
       batch: a.batch,
       section: a.section,
+      roomNumber: a.section.classroom?.room_number || "N/A",
+      buildingName: a.section.classroom?.building_name || "N/A",
       role: a.assignment_role,
       hoursPerWeek: a.assigned_hours_per_week
     }));

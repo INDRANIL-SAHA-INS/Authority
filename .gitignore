@@ -47,8 +47,10 @@ authority_ai_service_backend/face-detection-pipeline/*$py.class
 authority_ai_service_backend/face-detection-pipeline/.ipynb_checkpoints/
 authority_ai_service_backend/face-detection-pipeline/data/outputs/
 authority_ai_service_backend/face-detection-pipeline/data/uploads/
-# If data folder contains large test images/datasets:
-# authority_ai_service_backend/face-detection-pipeline/data/test_images/
+# Google Secrets
+# ------------------------------------------------------------------------------
+authority_ai_service_backend/face-detection-pipeline/credentials.json
+authority_microservices/mail_agent/token.pickle
 
 # General patterns that may apply to subfolders
 # ------------------------------------------------------------------------------

@@ -1,3 +1,6 @@
+#uvicorn src.api.main:app --reload
+
+
 """
 Create FastAPI app with the following endpoints:
 
@@ -15,56 +18,36 @@ GET /api/v1/debug/{image_id}
 """
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.responses import JSONResponse, StreamingResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 
-import uuid
 import time
-import numpy as np
 import tempfile
+import base64
 from src.core.face_detector import FaceDetector
 from src.core.image_processor import load_image, validate_image, get_image_metadata
-from src.core.postprocessing import filter_detections, assign_face_indices, calculate_face_area
-from src.utils.visualize import draw_detections
+from pydantic import BaseModel
+from langchain_core.messages import HumanMessage
+from mail_agent.graph import graph
 from src.api.config import Settings
-from src.api.validators import validate_enrollment_faces
+from src.api.validators import validate_enrollment_faces, validate_uploaded_file
 from deepface import DeepFace
 import os
 from io import BytesIO
 import cv2
 
+class AgentQueryRequest(BaseModel):
+    query: str
+
+class AgentResponse(BaseModel):
+    success: bool
+    status: str
+    message: str
+    data: dict
+
 settings = Settings()
 
 
-def validate_uploaded_file(image: UploadFile, max_size_mb=15):
-    allowed_ext = [".jpg", ".jpeg", ".png"]
-    ext = image.filename.lower().split('.')[-1]
-    if f".{ext}" not in allowed_ext:
-        raise HTTPException(status_code=400, detail={
-            "code": "INVALID_FILE_TYPE",
-            "message": "Only JPG, JPEG, PNG files are allowed"
-        })
-    if image.size and image.size > max_size_mb * 1024 * 1024:
-        raise HTTPException(status_code=400, detail={
-            "code": "FILE_TOO_LARGE",
-            "message": f"File size exceeds {max_size_mb}MB limit"
-        })
-
-def load_image_from_bytes(image_bytes):
-    np_arr = np.frombuffer(image_bytes, np.uint8)
-    img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-    if img is None:
-        raise HTTPException(status_code=422, detail={
-            "code": "CORRUPTED_IMAGE",
-            "message": "Image file is corrupted or unreadable"
-        })
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    return img
-
 app = FastAPI()
-
-# Serve static files (web interface)
-app.mount("/static", StaticFiles(directory="src/api/static", html=True), name="static")
 
 # Load model once at startup
 try:
@@ -75,32 +58,6 @@ except Exception as e:
 else:
     model_error = None
 
-
-
-@app.post("/api/v1/visualize")
-async def visualize_faces(image: UploadFile = File(...)):
-    """
-    Accept image, run detection, draw bounding boxes, return annotated image
-    """
-    validate_uploaded_file(image, max_size_mb=15)
-    image_bytes = await image.read()
-    img_array = load_image_from_bytes(image_bytes)
-    if detector is None:
-        raise HTTPException(status_code=503, detail={
-            "code": "MODEL_NOT_LOADED",
-            "message": model_error or "Model not loaded"
-        })
-    detections = detector.detect(img_array)
-    detections = filter_detections(detections)
-    detections = assign_face_indices(detections)
-    annotated_image = draw_detections(img_array, detections)
-    annotated_image_bgr = cv2.cvtColor(annotated_image, cv2.COLOR_RGB2BGR)
-    _, buffer = cv2.imencode('.jpg', annotated_image_bgr)
-    return StreamingResponse(
-        BytesIO(buffer.tobytes()),
-        media_type="image/jpeg",
-        headers={"Content-Disposition": "inline; filename=annotated.jpg"}
-    )
 
 @app.get("/api/v1/health")
 def health():
@@ -118,110 +75,6 @@ def health():
         "device": detector.device,
         "confidence_threshold": detector.confidence_threshold
     }
-
-@app.post("/api/v1/detect")
-def detect(image: UploadFile = File(...)):
-    import base64
-    allowed_ext = [".jpg", ".jpeg", ".png"]
-    ext = image.filename.lower().split('.')[-1]
-    print(f"[DEBUG] Uploaded file: {image.filename}, ext: {ext}")
-    file_bytes = image.file.read()
-    print(f"[DEBUG] File size: {len(file_bytes)} bytes")
-    if f".{ext}" not in allowed_ext:
-        print("[DEBUG] Invalid file extension")
-        raise HTTPException(status_code=400, detail={
-            "code": "INVALID_FILE_TYPE",
-            "message": "Only JPG, JPEG, PNG files are allowed"
-        })
-    is_valid = validate_image(file_bytes)
-    print(f"[DEBUG] validate_image result: {is_valid}")
-    if not is_valid:
-        print("[DEBUG] Image validation failed")
-        raise HTTPException(status_code=422, detail={
-            "code": "CORRUPTED_IMAGE",
-            "message": "Image file is corrupted or unreadable"
-        })
-    if len(file_bytes) > 15 * 1024 * 1024:
-        print("[DEBUG] File too large")
-        raise HTTPException(status_code=400, detail={
-            "code": "FILE_TOO_LARGE",
-            "message": "File size exceeds 15MB limit"
-        })
-    try:
-        with tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False) as tmp:
-            tmp.write(file_bytes)
-            temp_path = tmp.name
-        image_np = load_image(temp_path)
-    except Exception as e:
-        print(f"[DEBUG] Exception in load_image: {e}")
-        raise HTTPException(status_code=422, detail={
-            "code": "CORRUPTED_IMAGE",
-            "message": "Image file is corrupted or unreadable"
-        })
-    if detector is None:
-        print("[DEBUG] Model not loaded")
-        raise HTTPException(status_code=503, detail={
-            "code": "MODEL_NOT_LOADED",
-            "message": model_error or "Model not loaded"
-        })
-    start = time.time()
-    try:
-        detections = detector.detect(image_np)
-    except Exception as e:
-        print(f"[DEBUG] Exception in detector.detect: {e}")
-        raise HTTPException(status_code=500, detail={
-            "code": "DETECTION_FAILED",
-            "message": "Face detection failed"
-        })
-    detections = filter_detections(detections, confidence_threshold=0.85, min_face_size=20, image_shape=image_np.shape[:2])
-    detections = assign_face_indices(detections, sort_by='left_to_right')
-    cropped_faces = []
-    img_h, img_w = image_np.shape[0], image_np.shape[1]
-    for det in detections:
-        det['area_pixels'] = calculate_face_area(det['bbox'])
-        bbox = det['bbox']
-        x1, y1, x2, y2 = bbox['x1'], bbox['y1'], bbox['x2'], bbox['y2']
-        # Add 20% padding to each side
-        pad_x = int(0.2 * (x2 - x1))
-        pad_y = int(0.2 * (y2 - y1))
-        x1_pad = max(0, x1 - pad_x)
-        y1_pad = max(0, y1 - pad_y)
-        x2_pad = min(img_w, x2 + pad_x)
-        y2_pad = min(img_h, y2 + pad_y)
-        face_crop = image_np[y1_pad:y2_pad, x1_pad:x2_pad, :]
-        # Encode cropped face as base64 JPEG
-        if face_crop.size > 0:
-            face_bgr = cv2.cvtColor(face_crop, cv2.COLOR_RGB2BGR)
-            _, face_buf = cv2.imencode('.jpg', face_bgr)
-            face_b64 = base64.b64encode(face_buf.tobytes()).decode('utf-8')
-            cropped_faces.append(face_b64)
-        else:
-            cropped_faces.append(None)
-    metadata = get_image_metadata(image_np)
-    processing_time_ms = int((time.time() - start) * 1000)
-    image_id = str(uuid.uuid4())
-    print(f"[DEBUG] Detection complete: {len(detections)} faces, {processing_time_ms} ms")
-    return {
-        "success": True,
-        "image_id": image_id,
-        "metadata": {
-            **metadata,
-            "num_faces_detected": len(detections),
-            "processing_time_ms": processing_time_ms
-        },
-        "faces": detections,
-        "cropped_faces": cropped_faces
-    }
-
-@app.get("/api/v1/debug/{image_id}")
-def debug_image(image_id: str):
-    return JSONResponse(status_code=501, content={
-        "success": False,
-        "error": {
-            "code": "NOT_IMPLEMENTED",
-            "message": "Debug image endpoint not implemented yet"
-        }
-    })
 
 @app.post("/api/v1/enroll")
 def enroll_student(image: UploadFile = File(...)):
@@ -310,10 +163,6 @@ async def extract_classroom_faces(image: UploadFile = File(...)):
     ext = image.filename.lower().split('.')[-1]
     
     # 2. Decode Image for Cropping
-    from src.core.image_processor import load_image
-    import cv2
-    import base64
-    
     with tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False) as tmp:
         tmp.write(file_bytes)
         temp_path = tmp.name
@@ -403,3 +252,56 @@ async def extract_classroom_faces(image: UploadFile = File(...)):
     finally:
         if os.path.exists(temp_path):
             os.remove(temp_path)
+
+
+@app.post("/api/v1/agent/mail", response_model=AgentResponse)
+async def run_mail_agent(request: AgentQueryRequest):
+    """
+    Exposes the Mail Agent as an API route.
+    Processes natural language queries to identify students and send attendance warning emails.
+    """
+    print(f"\n[AGENT START] ---> Received Query: {request.query}")
+    
+    try:
+        # Run the compiled LangGraph
+        result = graph.invoke({
+            "messages": [HumanMessage(content=request.query)]
+        })
+        
+        # Determine success based on the agent's internal status
+        status = result.get("status", "unknown")
+        error_msg = result.get("error", "")
+        
+        # Define logic for success
+        is_success = status in ["emails_processed", "partial_failure"]
+        
+        # If every single email failed, we count it as a failure
+        if status == "all_emails_failed":
+            is_success = False
+
+        message = "Mail Agent processing complete"
+        if status == "no_students_found":
+            message = "No students met the criteria for this query."
+        elif status == "all_emails_failed":
+            message = "Students found, but all emails failed to send. Check system logs."
+        elif status == "partial_failure":
+            message = "Some emails sent successfully, but others failed."
+
+        return {
+            "success": is_success,
+            "status": status,
+            "message": error_msg if not is_success and error_msg else message,
+            "data": {
+                "sent_count": len(result.get("emails_sent", [])),
+                "failed_count": len(result.get("emails_failed", [])),
+                "total_found": len(result.get("candidate_students", [])),
+                "errors": result.get("email_errors", [])
+            }
+        }
+
+    except Exception as e:
+        print(f"[AGENT FATAL ERROR] {str(e)}")
+        raise HTTPException(status_code=500, detail={
+            "code": "AGENT_EXECUTION_ERROR",
+            "message": str(e)
+        })
