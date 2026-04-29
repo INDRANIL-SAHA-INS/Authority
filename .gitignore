@@ -50,6 +50,7 @@ authority_ai_service_backend/face-detection-pipeline/data/uploads/
 # Google Secrets
 # ------------------------------------------------------------------------------
 authority_ai_service_backend/face-detection-pipeline/credentials.json
+authority_microservices/mail_agent/credentials.json
 authority_microservices/mail_agent/token.pickle
 
 # General patterns that may apply to subfolders
