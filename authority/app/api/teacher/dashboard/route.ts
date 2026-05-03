@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/session";
 
 // Helper to safely serialize BigInt values in JSON
 const safeJson = (data: unknown) =>
@@ -7,203 +8,145 @@ const safeJson = (data: unknown) =>
     typeof value === "bigint" ? value.toString() : value
   );
 
+// Standardized CORS headers
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, ngrok-skip-browser-warning",
+};
+
 export async function GET(request: NextRequest) {
   try {
-    // --- Step 1: Extract user_id from query params ---
-    // TODO: Replace this with JWT token parsing once auth is implemented
-    const userId = request.nextUrl.searchParams.get("user_id");
+    // 1. Get the authenticated user and their teacher_id automatically
+    const user = await getCurrentUser(request);
 
-    if (!userId) {
+    // 2. Security Check: Ensure user is logged in and is a TEACHER
+    if (!user || user.role !== "TEACHER") {
       return NextResponse.json(
-        { error: "user_id query parameter is required" },
-        { 
-          status: 400,
-          headers: {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization, ngrok-skip-browser-warning",
-          }
-        }
+        { error: "Unauthorized or not a teacher profile" },
+        { status: 401, headers: corsHeaders }
       );
     }
 
-    // --- Step 2: Early role check (lightweight — only hits the users table) ---
-    // We verify the user exists and is a TEACHER before doing any heavy joins
-    const userRole = await prisma.user.findUnique({
-      where: { user_id: BigInt(userId) },
-      select: { role: true, is_active: true },
-    });
+    const teacherId = BigInt(user.profileId);
 
-    if (!userRole) {
-      return NextResponse.json({ error: "User not found" }, { 
-        status: 404,
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, Authorization, ngrok-skip-browser-warning",
-        }
-      });
-    }
+    // --- Step 2: Determine today's day name (IST Timezone Aware) ---
+    const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    
+    // Convert current time to IST (UTC+5.5) regardless of server location
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istTime = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + istOffset);
+    const todayName = DAYS[istTime.getDay()];
 
-    if (userRole.role !== "TEACHER") {
-      return NextResponse.json(
-        {
-          error: "Access denied",
-          message: `This endpoint is for teachers only. Your account role is '${userRole.role}'.`,
-        },
-        { 
-          status: 403,
-          headers: {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization, ngrok-skip-browser-warning",
-          }
-        }
-      );
-    }
-
-    if (!userRole.is_active) {
-      return NextResponse.json(
-        { error: "Account inactive", message: "Your account has been deactivated. Please contact admin." },
-        { 
-          status: 403,
-          headers: {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization, ngrok-skip-browser-warning",
-          }
-        }
-      );
-    }
-
-    // --- Step 3: Determine today's day name (matches DB format e.g. "Monday") ---
-    const DAYS = [
-      "Sunday",
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
-    ];
-    const todayName = DAYS[new Date().getDay()];
-
-    // --- Step 3: Fetch teacher profile + today's ACTIVE timetable in one query ---
-    const userData = await prisma.user.findUnique({
-      where: { user_id: BigInt(userId) },
+    // --- Step 3: Fetch teacher profile + today's ACTIVE timetable ---
+    const teacher = await prisma.teacher.findUnique({
+      where: { teacher_id: teacherId },
       include: {
-        teacher: {
+        department: true,
+        user: {
+          select: {
+            profile_image_url: true,
+            is_active: true, // Needed for account security check
+          }
+        },
+        timetables: {
+          where: {
+            day_of_week: todayName,
+            timetable_status: "ACTIVE",
+            period: { is_active: true },
+          },
           include: {
-            department: true,
-            timetables: {
-              where: {
-                day_of_week: todayName,
-                timetable_status: "ACTIVE",
-              },
-              include: {
-                subject: true,
-                batch: true,
-                section: true,
-                classroom: true,
-                time_slot: true,
-              },
-              orderBy: {
-                // Sort classes by start time so frontend gets them in order
-                time_slot: {
-                  start_time: "asc",
-                },
-              },
+            subject: true,
+            batch: true,
+            section: true,
+            classroom: true,
+            time_slot: true,
+          },
+          orderBy: {
+            time_slot: {
+              start_time: "asc",
             },
           },
         },
       },
     });
 
-    // --- Step 4: Validate that this user is actually a teacher ---
-    if (!userData) {
-      return NextResponse.json({ error: "User not found" }, { 
-        status: 404,
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, Authorization, ngrok-skip-browser-warning",
-        }
-      });
+    // --- Step 4: Validation and Security Checks ---
+    if (!teacher) {
+      return NextResponse.json({ error: "Teacher profile not found" }, { status: 404, headers: corsHeaders });
     }
 
-    if (!userData.teacher) {
-      return NextResponse.json(
-        { error: "No teacher profile linked to this user" },
-        { 
-          status: 404,
-          headers: {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization, ngrok-skip-browser-warning",
-          }
-        }
-      );
+    // Check if the actual user account is deactivated
+    if (teacher.user && !teacher.user.is_active) {
+      return NextResponse.json({ error: "Account deactivated" }, { status: 403, headers: corsHeaders });
     }
 
-    const teacher = userData.teacher;
+
+    const todaySchedule = teacher.timetables.map((slot) => {
+      if (!slot.time_slot?.start_time || !slot.time_slot?.end_time) return null;
+
+      // Map the Time from DB onto today's actual date in IST
+      const createISTDate = (timeDate: Date) => {
+        const d = new Date(now);
+        d.setUTCHours(timeDate.getUTCHours(), timeDate.getUTCMinutes(), 0, 0);
+        return new Date(d.getTime() - istOffset);
+      };
+
+      const startDT = createISTDate(slot.time_slot.start_time);
+      const endDT = createISTDate(slot.time_slot.end_time);
+
+      return {
+        id: slot.timetable_id, // safeJson handles the BigInt conversion
+        subjectName: slot.subject.subject_name ?? null,
+        subjectCode: slot.subject.subject_code ?? null,
+        type: slot.subject.subject_type ?? null,
+        batch: slot.batch.batch_name ?? null,
+        section: slot.section.section_name ?? null,
+        classStrength: slot.section.section_strength ?? 0,
+        room: slot.classroom.room_number ?? null,
+        timings: {
+          display: slot.time_slot.slot_name ?? null,
+          startTime: startDT.toISOString(),
+          endTime: endDT.toISOString(),
+          startLabel: startDT.toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit', 
+            hour12: true, 
+            timeZone: 'Asia/Kolkata' 
+          }),
+          endLabel: endDT.toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit', 
+            hour12: true, 
+            timeZone: 'Asia/Kolkata' 
+          })
+        }
+      };
+    }).filter(Boolean);
 
     // --- Step 5: Build the clean response payload ---
     const response = {
       profile: {
         fullName: `${teacher.first_name ?? ""} ${teacher.last_name ?? ""}`.trim(),
-        department: teacher.department.department_name ?? null,
-        profileImage: userData.profile_image_url ?? null,
-        // The frontend uses startTime/endTime of each class to determine
-        // "Live Now" status — no need to compute it here
-        status: teacher.status ?? null,
+        department: teacher.department?.department_name ?? null,
+        profileImage: teacher.user?.profile_image_url ?? null,
+        status: teacher.status ?? "ACTIVE",
       },
-      // Today's classes ordered by time.
-      // Frontend determines:
-      //   - current time within startTime..endTime  → "Live Now"
-      //   - startTime > now                         → "Upcoming"
-      //   - endTime < now                           → "Completed"
-      todaySchedule: teacher.timetables.map((slot) => ({
-        id: slot.timetable_id.toString(),
-        subjectName: slot.subject.subject_name ?? null,
-        subjectCode: slot.subject.subject_code ?? null,
-        type: slot.subject.subject_type ?? null, // "Lecture" | "Lab"
-        batch: slot.batch.batch_name ?? null,
-        section: slot.section.section_name ?? null,
-        classStrength: slot.section.section_strength ?? 0,
-        room: slot.classroom.room_number ?? null,
-        // Raw times for frontend "Live Now" calculation
-        startTime: slot.time_slot.start_time,
-        endTime: slot.time_slot.end_time,
-        // Human-readable label e.g. "10:00 AM – 11:00 AM"
-        timeLabel: slot.time_slot.slot_name ?? null,
-      })),
+      todaySchedule,
       meta: {
         day: todayName,
-        totalClassesToday: teacher.timetables.length,
+        totalClassesToday: todaySchedule.length,
       },
     };
 
     return new Response(safeJson(response), {
       status: 200,
-      headers: { 
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization, ngrok-skip-browser-warning",
-      },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+
   } catch (error) {
     console.error("[teacher/dashboard] Error:", error);
-    return NextResponse.json(
-      { error: "Internal Server Error" },
-      { 
-        status: 500,
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, Authorization, ngrok-skip-browser-warning",
-        }
-      }
-    );
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500, headers: corsHeaders });
   }
 }

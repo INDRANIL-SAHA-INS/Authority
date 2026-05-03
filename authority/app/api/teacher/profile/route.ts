@@ -1,68 +1,84 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/session";
+
+// Helper to safely serialize BigInt values in JSON
+const safeJson = (data: unknown) =>
+  JSON.stringify(data, (_, value) =>
+    typeof value === "bigint" ? value.toString() : value
+  );
+
+// Standardized CORS headers for development (especially for ngrok/cross-laptop testing)
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, ngrok-skip-browser-warning",
+};
 
 /**
- * GET /api/teacher/profile?user_id=...
- * Fetches the profile data for a specific teacher.
+ * GET /api/teacher/profile
+ * Fetches the profile data for the currently authenticated teacher.
  */
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    
-    // --- AUTHENTICATION / AUTHORIZATION ---
-    // Currently using query parameter for development.
-    // TODO: Replace with JWT/Session verification logic here.
-    // Example: const payload = await verifyToken(req.headers.get("Authorization"));
-    // const userIdFromToken = payload.sub;
-    
-    const userIdStr = searchParams.get("user_id");
+    // 1. Get the authenticated user and their teacher_id automatically
+    const user = await getCurrentUser(req);
 
-    if (!userIdStr) {
+    // 2. Security Check: Ensure user is logged in and is a TEACHER
+    if (!user || user.role !== "TEACHER") {
       return NextResponse.json(
-        { success: false, message: "user_id is required" },
-        { status: 400 }
+        { success: false, message: "Unauthorized or not a teacher profile" },
+        { status: 401, headers: corsHeaders }
       );
     }
 
-    // Convert string to BigInt for Prisma query
-    const userId = BigInt(userIdStr);
+    // 3. Use the specialized profileId (which is the teacher_id) from the token
+    const teacherId = BigInt(user.profileId);
 
-    // Fetch user and teacher data with relations
-    // Prisma uses indexes on @unique fields like user_id automatically for fast retrieval
-    const user = await prisma.user.findUnique({
-      where: { user_id: userId },
+    // Fetch teacher data using the teacher_id
+    const teacherData = await prisma.teacher.findUnique({
+      where: { teacher_id: teacherId },
       include: {
-        teacher: {
-          include: {
-            department: true,
-          },
-        },
+        department: true,
+        user: {
+          select: {
+            email: true,
+            profile_image_url: true,
+            is_active: true
+          }
+        }
       },
     });
 
-    // 1. Check if user exists
-    // 2. Enforce Teacher role only
-    if (!user || user.role !== "TEACHER" || !user.teacher) {
+    // Check if teacher exists
+    if (!teacherData) {
       return NextResponse.json(
-        { success: false, message: "Teacher profile not found or access denied" },
-        { status: 403 }
+        { success: false, message: "Teacher profile not found" },
+        { status: 404, headers: corsHeaders }
       );
     }
 
-    const { teacher } = user;
-    const { department } = teacher;
+    // Security Check: Ensure account is active
+    if (teacherData.user && !teacherData.user.is_active) {
+      return NextResponse.json(
+        { success: false, message: "Account deactivated" },
+        { status: 403, headers: corsHeaders }
+      );
+    }
+
+    const { department, user: userData } = teacherData;
 
     // Construct the standardized profile response
     const profileData = {
-      id: teacher.employee_id || null,
-      firstName: teacher.first_name || null,
-      lastName: teacher.last_name || null,
-      title: teacher.qualification?.toLowerCase().includes("ph.d") ? "Dr." : "Prof.",
-      profileImage: user.profile_image_url || null,
-      designation: teacher.designation || null,
+      id: teacherData.employee_id || null,
+      firstName: teacherData.first_name || null,
+      lastName: teacherData.last_name || null,
+      title: teacherData.qualification?.toLowerCase().includes("ph.d") ? "Dr." : "Prof.",
+      profileImage: userData?.profile_image_url || null,
+      designation: teacherData.designation || null,
       department: department?.department_name || null,
-      collegeEmail: user.email,
-      employeeId: teacher.employee_id || null,
+      collegeEmail: userData?.email || null,
+      employeeId: teacherData.employee_id || null,
       
       // Location data derived from Department and Teacher room
       location: {
@@ -70,8 +86,8 @@ export async function GET(req: NextRequest) {
         displayText: department?.office_location || "Not assigned"
       },
       cabin: {
-        number: teacher.office_room || null,
-        displayText: teacher.office_room ? `Cabin ${teacher.office_room}` : "Not assigned"
+        number: teacherData.office_room || null,
+        displayText: teacherData.office_room ? `Cabin ${teacherData.office_room}` : "Not assigned"
       },
 
       // HARDCODED FALLBACKS as requested by the user
@@ -89,14 +105,17 @@ export async function GET(req: NextRequest) {
       status: {
         isInOffice: true, // Hardcoded True
         isDarkThemeEnabled: true, // Hardcoded True
-        currentStatus: teacher.status || "ACTIVE"
+        currentStatus: teacherData.status || "ACTIVE"
       },
       college: "RV University" // Hardcoded
     };
 
-    return NextResponse.json({
+    return new Response(safeJson({
       success: true,
       data: profileData
+    }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
 
   } catch (error: any) {
@@ -104,7 +123,7 @@ export async function GET(req: NextRequest) {
     
     return NextResponse.json(
       { success: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }

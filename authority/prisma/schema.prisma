@@ -87,6 +87,7 @@ model Subject {
   backlogs             StudentBacklog[]
   enrollments          SubjectEnrollment[]
   exams                Exam[]
+  modules              SyllabusModule[]
 
   @@unique([subject_code])
   @@index([program_id])
@@ -122,6 +123,7 @@ model Teacher {
   subject_assignments  TeacherSubjectAssignment[]
   timetables           Timetable[]
   attendance_sessions  AttendanceSession[]
+  topic_coverage       TopicCoverage[]
 
   @@unique([employee_id])
   @@index([department_id])
@@ -176,6 +178,7 @@ model Batch {
   attendance_sessions      AttendanceSession[]
   exams                    Exam[]
   batch_semesters          BatchSemester[]
+  topic_coverage           TopicCoverage[]
 
   @@index([program_id])
   @@index([admission_year])
@@ -200,6 +203,7 @@ model Section {
   teacher_assignments TeacherSubjectAssignment[]
   timetables          Timetable[]
   attendance_sessions AttendanceSession[]
+  topic_coverage      TopicCoverage[]
 
   @@index([batch_id])
   @@index([classroom_id])
@@ -243,6 +247,7 @@ model Student {
   backlogs               StudentBacklog[]
   enrollments            SubjectEnrollment[]
   exam_results           ExamResult[]
+  practice_results       ModulePracticeResult[]
 
   @@unique([university_roll_number])
   @@unique([registration_number])
@@ -455,6 +460,7 @@ model AttendanceSession {
   section            Section            @relation(fields: [section_id], references: [section_id])
   classroom          Classroom          @relation(fields: [classroom_id], references: [classroom_id])
   attendance_records AttendanceRecord[]
+  covered_topics     TopicCoverage[]
 
   @@unique([timetable_id, session_date])
   @@index([session_date])
@@ -522,9 +528,6 @@ model LibraryVisitLog {
   
   user                 User      @relation(fields: [user_id], references: [user_id])
 
-  // Ensures only one 'ACTIVE' session per user exists at a time
-  @@unique([user_id, library_session_state], name: "uq_active_user_session")
-  
   @@index([user_id])
   @@index([library_session_state])
   @@index([library_entry_at])
@@ -585,6 +588,7 @@ model AcademicPeriod {
   exams           Exam[]
   attendance_summaries AttendanceSummary[]
   batch_semesters BatchSemester[]
+  topic_coverage  TopicCoverage[]
 
   @@unique([name, academic_year])
   @@map("academic_periods")
@@ -605,4 +609,122 @@ model BatchSemester {
   @@index([batch_id])
   @@index([period_id])
   @@map("batch_semesters")
+}
+
+model SyllabusModule {
+  module_id      BigInt           @id @default(autoincrement()) @map("module_id")
+  subject_id     BigInt           @map("subject_id")
+  module_number  Int              @map("module_number")
+  module_name    String           @map("module_name")
+  description    String?          @db.Text @map("description")
+  created_at     DateTime         @default(now()) @map("created_at")
+  updated_at     DateTime         @updatedAt @map("updated_at")
+
+  subject        Subject          @relation(fields: [subject_id], references: [subject_id], onDelete: Cascade)
+  topics         SyllabusTopic[]
+  resources      SyllabusResource[]
+  questions      ModuleQuestion[]
+  practice_results ModulePracticeResult[]
+
+  @@unique([subject_id, module_number])
+  @@index([subject_id])
+  @@map("syllabus_modules")
+}
+
+model SyllabusTopic {
+  topic_id         BigInt           @id @default(autoincrement()) @map("topic_id")
+  module_id        BigInt           @map("module_id")
+  topic_number     Int              @map("topic_number")
+  topic_name       String           @map("topic_name")
+  description      String?          @db.Text @map("description")
+  content_ai       String?          @db.Text @map("content_ai")
+  created_at       DateTime         @default(now()) @map("created_at")
+  updated_at       DateTime         @updatedAt @map("updated_at")
+
+  module           SyllabusModule   @relation(fields: [module_id], references: [module_id], onDelete: Cascade)
+  resources        SyllabusResource[]
+  coverage_records TopicCoverage[]
+
+  @@unique([module_id, topic_number])
+  @@index([module_id])
+  @@map("syllabus_topics")
+}
+
+model SyllabusResource {
+  resource_id     BigInt          @id @default(autoincrement()) @map("resource_id")
+  module_id       BigInt?         @map("module_id")
+  topic_id        BigInt?         @map("topic_id")
+  resource_type   String          @map("resource_type") // YOUTUBE, PDF, PPT, LINK, AI_NOTES
+  title           String          @map("title")
+  url             String?         @db.Text @map("url")
+  content_text    String?         @db.Text @map("content_text")
+  resource_order  Int             @default(0) @map("resource_order")
+  is_ai_generated Boolean         @default(false) @map("is_ai_generated")
+  created_at      DateTime        @default(now()) @map("created_at")
+  updated_at      DateTime        @updatedAt @map("updated_at")
+
+  module          SyllabusModule? @relation(fields: [module_id], references: [module_id], onDelete: Cascade)
+  topic           SyllabusTopic?  @relation(fields: [topic_id], references: [topic_id], onDelete: Cascade)
+
+  @@index([module_id])
+  @@index([topic_id])
+  @@map("syllabus_resources")
+}
+
+model TopicCoverage {
+  coverage_id   BigInt            @id @default(autoincrement()) @map("coverage_id")
+  topic_id      BigInt            @map("topic_id")
+  session_id    BigInt            @map("session_id")
+  teacher_id    BigInt            @map("teacher_id")
+  batch_id      BigInt            @map("batch_id")
+  section_id    BigInt            @map("section_id")
+  period_id     BigInt            @map("period_id")
+  covered_at    DateTime          @default(now()) @map("covered_at")
+  remarks       String?           @db.Text @map("remarks")
+  
+  topic         SyllabusTopic     @relation(fields: [topic_id], references: [topic_id])
+  session       AttendanceSession @relation(fields: [session_id], references: [session_id])
+  teacher       Teacher           @relation(fields: [teacher_id], references: [teacher_id])
+  batch         Batch             @relation(fields: [batch_id], references: [batch_id])
+  section       Section           @relation(fields: [section_id], references: [section_id])
+  period        AcademicPeriod    @relation(fields: [period_id], references: [period_id])
+
+  @@unique([topic_id, section_id, period_id])
+  @@index([section_id, period_id])
+  @@index([topic_id])
+  @@map("topic_coverage")
+}
+
+model ModuleQuestion {
+  question_id    BigInt         @id @default(autoincrement()) @map("question_id")
+  module_id      BigInt         @map("module_id")
+  question_text  String         @db.Text @map("question_text")
+  options        Json?          @map("options")
+  correct_answer String         @map("correct_answer")
+  explanation    String?        @db.Text @map("explanation")
+  difficulty     String?        @map("difficulty") // EASY, MEDIUM, HARD
+  created_at     DateTime       @default(now()) @map("created_at")
+  updated_at     DateTime       @updatedAt @map("updated_at")
+
+  module         SyllabusModule @relation(fields: [module_id], references: [module_id], onDelete: Cascade)
+
+  @@index([module_id])
+  @@map("module_questions")
+}
+
+model ModulePracticeResult {
+  result_id       BigInt         @id @default(autoincrement()) @map("result_id")
+  student_id      BigInt         @map("student_id")
+  module_id       BigInt         @map("module_id")
+  score           Float          @map("score")
+  total_questions Int            @map("total_questions")
+  responses       Json?          @map("responses")
+  completed_at    DateTime       @default(now()) @map("completed_at")
+
+  student         Student        @relation(fields: [student_id], references: [student_id])
+  module          SyllabusModule @relation(fields: [module_id], references: [module_id], onDelete: Cascade)
+
+  @@index([student_id])
+  @@index([module_id])
+  @@map("module_practice_results")
 }

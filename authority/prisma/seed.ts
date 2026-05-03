@@ -917,7 +917,7 @@ async function seed_timetables() {
       throw new Error("No active teacher assignments found. Run seed_teacher_assignments() first.");
     }
 
-    const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+    const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
     // 3. For each day, each assignment gets a fixed, dedicated time slot
     //    Slot 1 → Assignment 0 (e.g. Alice teaches DBMS)
@@ -1029,11 +1029,9 @@ async function seed_attendance_sessions() {
             date.setDate(today.getDate() - i);
             
             const dayOfWeek = date.getDay();
-            if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Skip Sat (6) and Sun (0)
-                // Normalize date to YYYY-MM-DD to avoid time issues with @db.Date
-                const sessionDate = new Date(date.toISOString().split('T')[0]);
-                sessionDates.push(sessionDate);
-            }
+            // Normalize date to YYYY-MM-DD to avoid time issues with @db.Date
+            const sessionDate = new Date(date.toISOString().split('T')[0]);
+            sessionDates.push(sessionDate);
         }
 
         for (const date of sessionDates) {
@@ -1269,6 +1267,213 @@ async function seed_users() {
   }
 }
 
+// =============================================================================
+// ADDITIONAL USERS SEED
+// Adds 5 more student users + 1 more teacher user (Robert Brown).
+// All 6 student users (including Aarav) share subjects with Alice (BCA-501 AI,
+// BCA-503 Data Science). Robert Brown gets a subset of 3 student users enrolled
+// in his assigned subject BCA-502 (Cloud Computing).
+// Call AFTER seed_users() so Aarav already has a User record.
+// =============================================================================
+async function seed_additional_users() {
+  try {
+    console.log("🌱 Starting additional user seeding (5 Students + 1 Teacher)...");
+
+    // ── Prerequisite lookups ──────────────────────────────────────────────────
+    const activePeriod = await prisma.academicPeriod.findFirst({ where: { is_active: true } });
+    if (!activePeriod) throw new Error("No active academic period found.");
+
+    const bcaSectionA = await prisma.section.findFirst({
+      where: { section_name: "BCA - Section A" },
+      include: { batch: { include: { batch_semesters: { where: { status: "ACTIVE" } } } } },
+    });
+    if (!bcaSectionA) throw new Error("BCA Section A not found.");
+
+    // Alice teaches BCA-501 (AI) and BCA-503 (Data Science) — shared with ALL 6 student users
+    // Robert Brown teaches BCA-502 (Cloud Computing) — shared with only 3 student users
+    const subjectAI        = await prisma.subject.findUnique({ where: { subject_code: "BCA-501" } });
+    const subjectCloud     = await prisma.subject.findUnique({ where: { subject_code: "BCA-502" } });
+    const subjectDataSci   = await prisma.subject.findUnique({ where: { subject_code: "BCA-503" } });
+    if (!subjectAI || !subjectCloud || !subjectDataSci) {
+      throw new Error("Required BCA-501/502/503 subjects not found. Ensure seed_subjects() ran.");
+    }
+
+    // ── 5 Additional Student Users ────────────────────────────────────────────
+    // These students already exist in the DB (seeded by seed_students()).
+    // We just need to create User accounts for them and link them.
+    // Roll numbers follow pattern: 1RUA24BCA000X (globalCount from seed_students)
+    const additionalStudents = [
+      { firstName: "Ananya",  lastName: "Verma",     roll: "1RUA24BCA0002", email: "ananyavermabca24@rvu.edu.in",     password: "hashed_student_pw_002" },
+      { firstName: "Ishaan",  lastName: "Gupta",     roll: "1RUA24BCA0003", email: "ishaanguptabca24@rvu.edu.in",     password: "hashed_student_pw_003" },
+      { firstName: "Diya",    lastName: "Malhotra",  roll: "1RUA24BCA0004", email: "diyamalhotrabca24@rvu.edu.in",    password: "hashed_student_pw_004" },
+      { firstName: "Reyansh", lastName: "Joshi",     roll: "1RUA24BCA0005", email: "reyanshjoshibca24@rvu.edu.in",    password: "hashed_student_pw_005" },
+      { firstName: "Meera",   lastName: "Singhania", roll: "1RUA24BCA0006", email: "meerasinghaniabca24@rvu.edu.in",  password: "hashed_student_pw_006" },
+    ];
+
+    // Students who will ALSO share Robert's Cloud Computing subject (subset of 3)
+    const robertsStudentRolls = new Set(["1RUA24BCA0002", "1RUA24BCA0004", "1RUA24BCA0005"]);
+
+    for (const s of additionalStudents) {
+      // 1. Find the existing student record
+      const studentRecord = await prisma.student.findUnique({
+        where: { university_roll_number: s.roll },
+      });
+      if (!studentRecord) {
+        console.log(`⚠️ Student ${s.firstName} ${s.lastName} (${s.roll}) not found. Skipping.`);
+        continue;
+      }
+
+      // 2. Create / retrieve user account
+      const userRecord = await prisma.user.upsert({
+        where: { email: s.email },
+        update: { is_active: true },
+        create: {
+          email: s.email,
+          password_hash: s.password,
+          role: "STUDENT",
+          is_active: true,
+        },
+      });
+
+      // 3. Link User → Student
+      await prisma.student.update({
+        where: { student_id: studentRecord.student_id },
+        data: { user_id: userRecord.user_id },
+      });
+      console.log(`✅ User created for Student: ${s.firstName} ${s.lastName} (${s.email})`);
+
+      // 4. Enroll in Alice's subjects (BCA-501 AI + BCA-503 Data Science)
+      //    These are sem-5 subjects; we enroll them directly in the active period.
+      const periodId = activePeriod.period_id;
+      for (const subj of [subjectAI, subjectDataSci]) {
+        await prisma.subjectEnrollment.upsert({
+          where: {
+            student_id_subject_id_period_id: {
+              student_id: studentRecord.student_id,
+              subject_id: subj.subject_id,
+              period_id: periodId,
+            },
+          },
+          update: { status: "ACTIVE" },
+          create: {
+            student_id: studentRecord.student_id,
+            subject_id: subj.subject_id,
+            period_id: periodId,
+            status: "ACTIVE",
+          },
+        });
+      }
+      console.log(`   ↳ Enrolled ${s.firstName} in BCA-501 (AI) & BCA-503 (Data Science) — Alice's subjects.`);
+
+      // 5. Enroll subset of students in Robert's subject (BCA-502 Cloud Computing)
+      if (robertsStudentRolls.has(s.roll)) {
+        await prisma.subjectEnrollment.upsert({
+          where: {
+            student_id_subject_id_period_id: {
+              student_id: studentRecord.student_id,
+              subject_id: subjectCloud.subject_id,
+              period_id: activePeriod.period_id,
+            },
+          },
+          update: { status: "ACTIVE" },
+          create: {
+            student_id: studentRecord.student_id,
+            subject_id: subjectCloud.subject_id,
+            period_id: activePeriod.period_id,
+            status: "ACTIVE",
+          },
+        });
+        console.log(`   ↳ Also enrolled ${s.firstName} in BCA-502 (Cloud Computing) — Robert's subject.`);
+      }
+    }
+
+    // ── Also enroll EXISTING Aarav Sharma in Alice's shared subjects ──────────
+    // (Aarav was already a user from seed_users; now add him to sem-5 subjects too)
+    const aarav = await prisma.student.findFirst({ where: { first_name: "Aarav", last_name: "Sharma" } });
+    if (aarav) {
+      for (const subj of [subjectAI, subjectDataSci]) {
+        await prisma.subjectEnrollment.upsert({
+          where: {
+            student_id_subject_id_period_id: {
+              student_id: aarav.student_id,
+              subject_id: subj.subject_id,
+              period_id: activePeriod.period_id,
+            },
+          },
+          update: { status: "ACTIVE" },
+          create: {
+            student_id: aarav.student_id,
+            subject_id: subj.subject_id,
+            period_id: activePeriod.period_id,
+            status: "ACTIVE",
+          },
+        });
+      }
+      console.log("✅ Aarav Sharma also enrolled in BCA-501 (AI) & BCA-503 (Data Science) — Alice's subjects.");
+    }
+
+    // ── Additional Teacher User: Robert Brown ─────────────────────────────────
+    const robertTeacher = await prisma.teacher.findUnique({ where: { employee_id: "EMP-SOCSE-002" } });
+    if (!robertTeacher) throw new Error("Teacher Robert Brown (EMP-SOCSE-002) not found. Run seed_teachers() first.");
+
+    const robertUser = await prisma.user.upsert({
+      where: { email: "robert.brown@college.edu" },
+      update: { is_active: true },
+      create: {
+        email: "robert.brown@college.edu",
+        password_hash: "hashed_teacher_pw_robert", // Replace with bcrypt hash in production
+        role: "TEACHER",
+        is_active: true,
+      },
+    });
+
+    // Link User → Teacher
+    await prisma.teacher.update({
+      where: { teacher_id: robertTeacher.teacher_id },
+      data: { user_id: robertUser.user_id },
+    });
+    console.log(`✅ User created for Teacher: Robert Brown (Email: ${robertUser.email}, User ID: ${robertUser.user_id})`);
+
+    // ── Teacher Subject Assignment: Robert → BCA-502 (Cloud Computing) ────────
+    await prisma.teacherSubjectAssignment.upsert({
+      where: {
+        teacher_id_subject_id_batch_id_section_id_period_id: {
+          teacher_id: robertTeacher.teacher_id,
+          subject_id: subjectCloud.subject_id,
+          batch_id: bcaSectionA.batch_id,
+          section_id: bcaSectionA.section_id,
+          period_id: activePeriod.period_id,
+        },
+      },
+      update: {
+        assigned_hours_per_week: 4,
+        assignment_role: "Primary Instructor",
+        assignment_status: "ACTIVE",
+      },
+      create: {
+        teacher_id: robertTeacher.teacher_id,
+        subject_id: subjectCloud.subject_id,
+        batch_id: bcaSectionA.batch_id,
+        section_id: bcaSectionA.section_id,
+        period_id: activePeriod.period_id,
+        assigned_hours_per_week: 4,
+        assignment_role: "Primary Instructor",
+        assignment_status: "ACTIVE",
+      },
+    });
+    console.log("✅ Robert Brown assigned to BCA-502 (Cloud Computing) for BCA Section A.");
+
+    console.log("\n📋 Summary of additional users:");
+    console.log("   👩‍🎓 Student users: Ananya, Ishaan, Diya, Reyansh, Meera (+ existing Aarav)");
+    console.log("   📚 All 6 share: BCA-501 AI & BCA-503 Data Science → with Alice Smith");
+    console.log("   📚 Ananya, Diya, Reyansh also share: BCA-502 Cloud Computing → with Robert Brown");
+    console.log("   👨‍🏫 Teacher user: Robert Brown (robert.brown@college.edu)");
+
+  } catch (error) {
+    console.error("❌ Error seeding additional users:", error);
+  }
+}
+
 async function main() {
   try {
     await seed_classrooms();
@@ -1289,6 +1494,7 @@ async function main() {
     await seed_attendance_records();
     await seed_attendance_summaries();
     await seed_users();
+    await seed_additional_users();
     console.log("✨ All seed data finished successfully.");
   } catch (error) {
     console.error("❌ Seeding failed:", error);

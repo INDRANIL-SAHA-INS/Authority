@@ -13,35 +13,40 @@ def extraction_node(state: AgentState) -> AgentState:
     from the teacher's raw natural language prompt.
     """
     user_input = state["messages"][-1].content
+    context = state.get("context", [])
+    
+    # Format the context for the LLM to use as a lookup table
+    context_info = ""
+    if context:
+        context_info = "Available Context (use this to map names to IDs):\n"
+        for item in context:
+            context_info += (
+                f"- '{item.subject_name}' -> subject_id: {item.subject_id}, "
+                f"section_id: {item.section_id} ({item.section_name})\n"
+            )
+
     pydantic_parser_intent = PydanticOutputParser(pydantic_object=StudentQueryIntent)
 
     extraction_system_prompt = """
 You are an academic assistant that extracts structured student query information
 from a teacher's natural language instruction.
 
-Rules:
-- section_id is ALWAYS required. If not mentioned, return null for it.
+{context_info}
+
+CRITICAL RULES:
+1. Lookup section_id and subject_id from the 'Available Context' above.
+2. If the teacher mentions a subject name (e.g. 'Artificial Intelligence'), you MUST find its corresponding 'subject_id' and 'section_id' from the context table.
+3. Return all IDs (subject_id, section_id, student_ids) as STRINGS (e.g. "6", not 6).
+4. section_id and subject_id are REQUIRED.
+
 - If one student is mentioned -> set query_type = "single_student"
 - If multiple students are mentioned -> set query_type = "multiple_students"
-- If teacher says "all students" -> set query_type = "whole_class"
+- If teacher says "all students" or "whole class" -> set query_type = "whole_class"
 - If threshold like "below 85%" is mentioned -> set query_type = "threshold_based"
 
-- Extract student IDs into "student_ids" as a list
-- Extract student names into "student_names" as a list if IDs not available
-
-- Extract reason into "reason":
-  - "attendance"
-  - "marks"
-  - "both"
-
-- Extract notify audience into "notify_scope":
-  - "parents_only"
-  - "student_only"
-  - "both"
-
-- Default attendance_threshold = 85.0 if not specified
-- Default notify_scope = "parents_only"
-- Default reason = "attendance"
+- Extract student IDs into "student_ids" as a list of strings.
+- Extract reason into "reason": "attendance", "marks", or "both".
+- Default attendance_threshold = 85.0 if not specified.
 
 User Input:
 {user_input}
@@ -50,15 +55,28 @@ Return ONLY valid JSON matching this schema:
 {schema}
 """
     prompt_template = PromptTemplate(
-        input_variables=["user_input"],
+        input_variables=["user_input", "context_info"],
         template=extraction_system_prompt,
         partial_variables={"schema": pydantic_parser_intent.get_format_instructions()},
     )
 
-    chain = prompt_template | llm | pydantic_parser_intent
-    result = chain.invoke({"user_input": user_input})
-    state["query_intent"] = result
-    return state
+    try:
+        chain = prompt_template | llm | pydantic_parser_intent
+        result = chain.invoke({"user_input": user_input, "context_info": context_info})
+        
+        # Validation: If AI failed to find IDs, don't proceed blindly
+        if not result.section_id or not result.subject_id:
+            state["error"] = "I couldn't identify the class or subject. Please mention them clearly (e.g., 'Artificial Intelligence in Section A')."
+            state["status"] = "failed"
+            return state
+
+        state["query_intent"] = result
+        return state
+    except Exception as e:
+        print(f"[EXTRACTION ERROR] {e}")
+        state["error"] = "Failed to parse the request. Try to be more specific about the subject and section."
+        state["status"] = "failed"
+        return state
 
 
 def resolve_targets(state: AgentState) -> AgentState:

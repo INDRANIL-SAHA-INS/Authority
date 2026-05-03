@@ -1,20 +1,58 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/session";
+
+// Gap 6 Fixed: CORS headers for mobile compatibility
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, ngrok-skip-browser-warning",
+};
+
+// Gap 4 Fixed: Shared safeJson instead of local serializeBigInt
+const safeJson = (obj: any) =>
+  JSON.stringify(obj, (_, v) => (typeof v === "bigint" ? v.toString() : v));
+
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
 
 /**
  * GET /api/teacher/attendance/student-report?student_id=...&subject_id=...&month=...&year=...
  * Fetches detailed attendance report for a specific student, curated for a calendar UI.
+ *
+ * Authentication: Requires a valid TEACHER JWT token.
+ * Authorization:  Teacher must be assigned to the requested subject_id.
  */
 export async function GET(req: NextRequest) {
   try {
+    // Gap 1 Fixed: JWT Authentication
+    const currentUser = await getCurrentUser(req);
+    if (!currentUser) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401, headers: corsHeaders }
+      );
+    }
+
+    // Gap 2 Fixed (part 1): Role check — must be a TEACHER
+    if (currentUser.role !== "TEACHER") {
+      return NextResponse.json(
+        { success: false, message: "Forbidden: Teacher access only" },
+        { status: 403, headers: corsHeaders }
+      );
+    }
+
+    const teacherId = BigInt(currentUser.profileId);
+
     const { searchParams } = new URL(req.url);
     const studentIdStr = searchParams.get("student_id");
     const subjectIdStr = searchParams.get("subject_id");
-    
+
     if (!studentIdStr || !subjectIdStr) {
       return NextResponse.json(
         { success: false, message: "student_id and subject_id are required" },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -23,11 +61,31 @@ export async function GET(req: NextRequest) {
 
     // 1. Get the current active period
     const activePeriod = await prisma.academicPeriod.findFirst({
-      where: { is_active: true }
+      where: { is_active: true },
     });
 
     if (!activePeriod) {
-      return NextResponse.json({ success: false, message: "Active period not found" }, { status: 404 });
+      return NextResponse.json(
+        { success: false, message: "Active period not found" },
+        { status: 404, headers: corsHeaders }
+      );
+    }
+
+    // Gap 2 Fixed (part 2): Authorization — verify teacher is assigned to this subject
+    const assignment = await prisma.teacherSubjectAssignment.findFirst({
+      where: {
+        teacher_id: teacherId,
+        subject_id: subjectId,
+        period_id: activePeriod.period_id,
+        assignment_status: "ACTIVE",
+      },
+    });
+
+    if (!assignment) {
+      return NextResponse.json(
+        { success: false, message: "Forbidden: You are not assigned to this subject" },
+        { status: 403, headers: corsHeaders }
+      );
     }
 
     // 2. Fetch Summary Statistics
@@ -36,20 +94,26 @@ export async function GET(req: NextRequest) {
         student_id_subject_id_period_id: {
           student_id: studentId,
           subject_id: subjectId,
-          period_id: activePeriod.period_id
-        }
-      }
+          period_id: activePeriod.period_id,
+        },
+      },
     });
 
-    // 3. Fetch Student Identity
+    // Gap 5 Fixed: Null-guard for student not found → clean 404
     const student = await prisma.student.findUnique({
       where: { student_id: studentId },
-      select: { first_name: true, last_name: true, university_roll_number: true }
+      select: { first_name: true, last_name: true, university_roll_number: true },
     });
 
-    // 4. Monthly Calendar Logic
+    if (!student) {
+      return NextResponse.json(
+        { success: false, message: "Student not found" },
+        { status: 404, headers: corsHeaders }
+      );
+    }
+
+    // 3. Monthly Calendar Logic
     const now = new Date();
-    // month is 0-indexed (0 = Jan, 9 = Oct)
     const month = parseInt(searchParams.get("month") || now.getMonth().toString());
     const year = parseInt(searchParams.get("year") || now.getFullYear().toString());
 
@@ -63,39 +127,37 @@ export async function GET(req: NextRequest) {
           subject_id: subjectId,
           session_date: {
             gte: startDate,
-            lte: endDate
-          }
-        }
+            lte: endDate,
+          },
+        },
       },
       include: {
         session: {
           include: {
             classroom: {
-              select: { room_number: true, building_name: true }
+              select: { room_number: true, building_name: true },
             },
             timetable: {
               include: {
-                time_slot: true
-              }
-            }
-          }
-        }
+                time_slot: true,
+              },
+            },
+          },
+        },
       },
       orderBy: {
         session: {
-          session_date: 'asc'
-        }
-      }
+          session_date: "asc",
+        },
+      },
     });
 
-    // 5. Curate the response into a Date Map for the UI
-    // Dictionary key: "YYYY-MM-DD"
+    // 4. Build the calendar map — one record per day (one subject = one slot/day, no overwrite risk)
     const calendarMap: Record<string, any> = {};
 
-    records.forEach(r => {
+    records.forEach((r) => {
       if (r.session.session_date) {
-        // We use the date part as the key
-        const dateKey = r.session.session_date.toISOString().split('T')[0];
+        const dateKey = r.session.session_date.toISOString().split("T")[0];
         calendarMap[dateKey] = {
           attendanceId: r.attendance_id.toString(),
           status: r.attendance_status, // "PRESENT", "ABSENT", "LEAVE"
@@ -104,51 +166,36 @@ export async function GET(req: NextRequest) {
             endTime: r.session.timetable.time_slot.end_time,
             slotName: r.session.timetable.time_slot.slot_name,
             room: r.session.classroom.room_number,
-            building: r.session.classroom.building_name
-          }
+            building: r.session.classroom.building_name,
+          },
         };
       }
     });
 
-    return NextResponse.json(serializeBigInt({
-      success: true,
-      data: {
-        studentInfo: {
-          name: `${student?.first_name} ${student?.last_name}`,
-          rollNumber: student?.university_roll_number
+    return new NextResponse(
+      safeJson({
+        success: true,
+        data: {
+          studentInfo: {
+            name: `${student.first_name} ${student.last_name}`,
+            rollNumber: student.university_roll_number,
+          },
+          stats: {
+            overallPercentage: summary?.attendance_percentage || 0,
+            totalClasses: summary?.total_classes || 0,
+            classesAttended: summary?.classes_attended || 0,
+            classesMissed: summary?.classes_missed || 0,
+          },
+          calendar: calendarMap,
         },
-        stats: {
-          overallPercentage: summary?.attendance_percentage || 0,
-          totalClasses: summary?.total_classes || 0,
-          classesAttended: summary?.classes_attended || 0,
-          classesMissed: summary?.classes_missed || 0,
-        },
-        // The frontend can now do: if (calendar["2023-10-02"]) { ... }
-        calendar: calendarMap
-      }
-    }));
-
+      }),
+      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    );
   } catch (error) {
     console.error("Error in student-report:", error);
-    return NextResponse.json({ success: false, message: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, message: "Internal server error" },
+      { status: 500, headers: corsHeaders }
+    );
   }
-}
-
-/**
- * Helper to convert BigInt values for JSON serialization
- */
-function serializeBigInt(obj: unknown): unknown {
-  if (obj === null || typeof obj !== "object") {
-    return typeof obj === "bigint" ? obj.toString() : obj;
-  }
-  if (obj instanceof Date) return obj.toISOString();
-  if (Array.isArray(obj)) return obj.map(serializeBigInt);
-  
-  const result: Record<string, unknown> = {};
-  for (const key in obj) {
-    if (Object.prototype.hasOwnProperty.call(obj, key)) {
-      result[key] = serializeBigInt((obj as Record<string, unknown>)[key]);
-    }
-  }
-  return result;
 }

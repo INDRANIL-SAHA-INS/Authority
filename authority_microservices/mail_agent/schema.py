@@ -1,8 +1,6 @@
 from enum import Enum
-from typing import Optional, List, Dict, NotRequired
-from pydantic import BaseModel, Field
-from langgraph.graph import MessagesState
-from enum import Enum
+from typing import Optional, List, Dict, NotRequired, Any
+from pydantic import BaseModel, Field, field_validator
 from langgraph.graph import MessagesState
 
 class TargetType(str, Enum):
@@ -22,6 +20,14 @@ class NotifyAudience(str, Enum):
     PARENTS = "parents_only"
     STUDENT = "student_only"
     BOTH = "both"
+
+
+class SubjectContext(BaseModel):
+    subject_name: str
+    subject_id: str
+    section_name: str
+    section_id: str
+    batch_name: str
 
 
 
@@ -70,6 +76,13 @@ class StudentQueryIntent(BaseModel):
         description="Reason for email: attendance, marks, or both."
     )
 
+    @field_validator('section_id', 'subject_id', mode='before')
+    @classmethod
+    def coerce_to_string(cls, v: Any) -> Optional[str]:
+        if v is None:
+            return None
+        return str(v)
+
 
 
 class StudentRecord(BaseModel):
@@ -108,6 +121,7 @@ class StudentRecord(BaseModel):
         return self.guardian_email
 
 class AgentState(MessagesState):
+    context: NotRequired[List[SubjectContext]]
     query_intent: NotRequired[StudentQueryIntent]
 
     # Step 1 output

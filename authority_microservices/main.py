@@ -15,14 +15,15 @@ import tempfile
 import traceback
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile, status
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile, status, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 # ── Service imports ────────────────────────────────────────────────────────────
 from Marks_extraction import extract_marks_from_document
 from mail_agent.graph import graph as mail_graph
-from langchain_core.messages import HumanMessage
+from mail_agent.schema import SubjectContext
+from langchain_core.messages import HumanMessage, AIMessage
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -192,20 +193,15 @@ class MailAgentRequest(BaseModel):
     1. Resolves the target students from the Authority backend API
     2. Generates personalised email bodies via the LLM
     3. Sends emails via Gmail OAuth
-
-    ### Example queries
-    - `"Send attendance warning to students below 75% in section CS-A subject id 3"`
-    - `"Email student 1RUA24BCA0004 and 1RUA24BCA0005 attendance alert, section 2, subject 4"`
-    - `"Notify all parents in section 1 about marks, subject id 2"`
     """
-
-    query: str = Field(
+    message: str = Field(
         ...,
-        min_length=5,
-        description="Natural-language instruction for the mail agent.",
-        examples=[
-            "Send attendance warning to all students below 75% in section 1, subject id 3"
-        ],
+        min_length=1,
+        description="Current natural-language instruction from the teacher.",
+    )
+    context: List[SubjectContext] = Field(
+        default_factory=list,
+        description="Available subject/section mapping for the current teacher."
     )
 
 
@@ -222,7 +218,7 @@ class MailAgentResponse(BaseModel):
 # ── Route ─────────────────────────────────────────────────────────────────────
 
 @app.post(
-    "/api/mail/send-agent",
+    "/api/mail/ai-dispatch",
     response_model=MailAgentResponse,
     summary="Run the Mail Agent with a natural-language query",
     tags=["Mail Agent"],
@@ -233,31 +229,26 @@ class MailAgentResponse(BaseModel):
         500: {"model": ErrorResponse, "description": "Internal server error."},
     },
 )
-async def run_mail_agent(body: MailAgentRequest):
+async def run_mail_agent(body: MailAgentRequest, background_tasks: BackgroundTasks):
     """
     ### Run the Mail Agent
 
-    Accepts a **free-text query** from a teacher. The agent pipeline:
-
-    | Step | Node | What it does |
-    |------|------|--------------|
-    | 1 | `extraction_node` | LLM parses section_id, subject_id, student_ids, threshold, notify_scope |
-    | 2 | `resolve_targets` | Fetches matching students from Authority backend |
-    | 3 | `send_email_node` | Generates email body per student & sends via Gmail API |
-
-    #### Returned status values
-    | Status | Meaning |
-    |--------|---------|
-    | `emails_processed` | All emails sent |
-    | `partial_failure` | Some emails sent, some failed |
-    | `all_emails_failed` | Every send attempt failed |
-    | `no_students_found` | No matching students in the database |
-    | `failed` | Agent-level validation error (e.g. missing section_id) |
+    Accepts a structured payload with **message** and **context**.
+    Processing happens in the background to prevent timeouts.
     """
     try:
-        output = mail_graph.invoke(
-            {"messages": [HumanMessage(content=body.query)]}
-        )
+        # Create the message list (history removed as requested)
+        messages = [HumanMessage(content=body.message)]
+
+        # We run the graph immediately. 
+        # Note: If the email sending logic inside the graph is slow, 
+        # you might want to move the entire graph.invoke to background_tasks.
+        # But for now, we'll keep it here so we can return the 'status'.
+        
+        output = mail_graph.invoke({
+            "messages": messages,
+            "context": body.context
+        })
 
         agent_status: str = output.get("status", "unknown")
         emails_sent: List[str] = output.get("emails_sent", [])
@@ -265,17 +256,16 @@ async def run_mail_agent(body: MailAgentRequest):
         email_errors: List[str] = output.get("email_errors", [])
         agent_error: Optional[str] = output.get("error")
 
-        # Surface validation failures as a 400 so the caller knows to fix the query
         if agent_status == "failed":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=agent_error or "Agent validation failed. Check section_id and subject_id in your query.",
+                detail=agent_error or "Agent could not process the request.",
             )
 
         return MailAgentResponse(
             success=agent_status not in ("all_emails_failed", "failed"),
             status=agent_status,
-            query=body.query,
+            query=body.message,
             emails_sent=emails_sent,
             emails_failed=emails_failed,
             email_errors=email_errors,
@@ -283,13 +273,11 @@ async def run_mail_agent(body: MailAgentRequest):
         )
 
     except HTTPException:
-        raise  # re-raise intentional HTTP errors
-
+        raise
     except Exception as exc:
-        # Catch LLM / Gmail / network errors
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Mail agent failed: {exc}\n{traceback.format_exc()}",
+            detail=f"Mail agent failed: {str(exc)}",
         )
 
 

@@ -1,83 +1,99 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/session";
+
+// Standardized CORS headers for Mobile/Web compatibility
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, ngrok-skip-browser-warning",
+};
+
+// Helper for BigInt serialization
+const safeJson = (obj: any) => JSON.stringify(obj, (_, v) => typeof v === "bigint" ? v.toString() : v);
+
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
 
 /**
  * API for Library Entry/Exit via QR Code
- * Expects: { userId: string, action: 'ENTRY' | 'EXIT', secret: string }
- * userId here is the unique ID from the central User table.
- * secret must match the LIBRARY_QR_SECRET env variable.
+ * Expects: { action: 'ENTRY' | 'EXIT', secret: string }
+ * Security: Validates the JWT token for identity and the QR secret for physical presence.
  */
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
+    // 1. Identity Check
+    const user = await getCurrentUser(req);
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401, headers: corsHeaders });
+    }
+
     const body = await req.json();
-    console.log(">>> Library API Request Body:", body);
-    const { userId, action, secret } = body;
+    const { action, secret } = body;
+    const userId = BigInt(user.id); // Derived from secure JWT token
 
-    // --- Security: Validate the QR secret key ---
+    // 2. Secret Validation (Ensures user is at the physical QR code)
     const validSecret = process.env.LIBRARY_QR_SECRET;
-    console.log(">>> Configured Secret:", validSecret);
-    console.log(">>> Received Secret from QR:", secret);
-
     if (!validSecret || secret !== validSecret) {
-      console.warn("!!! Unauthorized: Secret mismatch.");
       return NextResponse.json(
-        { error: "Unauthorized: Invalid QR source." },
-        { status: 401 }
+        { success: false, error: "Unauthorized: Invalid QR source." },
+        { status: 401, headers: corsHeaders }
       );
     }
 
-    if (!userId || !action) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    if (!action) {
+      return NextResponse.json({ success: false, error: "Missing action field" }, { status: 400, headers: corsHeaders });
     }
-
-    const id = BigInt(userId);
 
     // ---------------------------------------------------------
     // HANDLE ENTRY
     // ---------------------------------------------------------
     if (action === "ENTRY") {
-      try {
-        const newLog = await prisma.libraryVisitLog.create({
-          data: {
-            user_id: id,
-            library_entry_at: new Date(),
-            library_session_state: "ACTIVE",
-          },
-        });
+      // 1. Check if the user already has an active session
+      const existingSession = await prisma.libraryVisitLog.findFirst({
+        where: { user_id: userId, library_session_state: "ACTIVE" }
+      });
 
-        return NextResponse.json({
-          message: "Entry recorded successfully",
-          logId: newLog.library_log_id.toString(),
-          state: "ACTIVE",
-        });
-      } catch (err: any) {
-        // Handle Unique Constraint Error (P2002) - Means user already has an ACTIVE session
-        if (err.code === "P2002") {
-          return NextResponse.json(
-            { error: "Access Denied: You already have an active library session." },
-            { status: 409 }
-          );
-        }
-        throw err;
+      if (existingSession) {
+        return NextResponse.json(
+          { success: false, error: "Access Denied: You already have an active library session." },
+          { status: 409, headers: corsHeaders }
+        );
       }
+
+      // 2. Create the new session
+      const newLog = await prisma.libraryVisitLog.create({
+        data: {
+          user_id: userId,
+          library_entry_at: new Date(),
+          library_session_state: "ACTIVE",
+        },
+      });
+
+      return new Response(safeJson({
+        success: true,
+        message: "Library entry recorded",
+        logId: newLog.library_log_id,
+        state: "ACTIVE",
+      }), { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // ---------------------------------------------------------
     // HANDLE EXIT
     // ---------------------------------------------------------
     if (action === "EXIT") {
-      // Find the active session for this specific user
       const activeSession = await prisma.libraryVisitLog.findFirst({
         where: {
-          user_id: id,
+          user_id: userId,
           library_session_state: "ACTIVE",
         },
       });
 
       if (!activeSession) {
         return NextResponse.json(
-          { error: "No active session found. Did you forget to scan Entry?" },
-          { status: 404 }
+          { success: false, error: "No active session found. Did you forget to scan Entry?" },
+          { status: 404, headers: corsHeaders }
         );
       }
 
@@ -89,20 +105,21 @@ export async function POST(req: Request) {
         },
       });
 
-      return NextResponse.json({
-        message: "Exit recorded successfully",
-        logId: updatedLog.library_log_id.toString(),
+      return new Response(safeJson({
+        success: true,
+        message: "Library exit recorded",
+        logId: updatedLog.library_log_id,
         state: "CLOSED",
-      });
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+    return NextResponse.json({ success: false, error: "Invalid action" }, { status: 400, headers: corsHeaders });
 
   } catch (error: any) {
     console.error("Library API Error:", error);
     return NextResponse.json(
-      { error: "Internal Server Error", details: error.message },
-      { status: 500 }
+      { success: false, error: "Internal Server Error", details: error.message },
+      { status: 500, headers: corsHeaders }
     );
   }
 }

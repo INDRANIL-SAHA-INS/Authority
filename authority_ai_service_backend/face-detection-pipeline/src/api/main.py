@@ -26,17 +26,12 @@ import base64
 from src.core.face_detector import FaceDetector
 from src.core.image_processor import load_image, validate_image, get_image_metadata
 from pydantic import BaseModel
-from langchain_core.messages import HumanMessage
-from mail_agent.graph import graph
 from src.api.config import Settings
 from src.api.validators import validate_enrollment_faces, validate_uploaded_file
 from deepface import DeepFace
 import os
 from io import BytesIO
 import cv2
-
-class AgentQueryRequest(BaseModel):
-    query: str
 
 class AgentResponse(BaseModel):
     success: bool
@@ -147,7 +142,7 @@ def enroll_student(image: UploadFile = File(...)):
 
 
 @app.post("/api/attendance/process_classroom")
-async def extract_classroom_faces(image: UploadFile = File(...)):
+def extract_classroom_faces(image: UploadFile = File(...)):
     """
     Phase 2: Bulk Face Extraction (Attendance Core)
     Accepts a high-resolution classroom image, finds EVERY face, 
@@ -159,7 +154,7 @@ async def extract_classroom_faces(image: UploadFile = File(...)):
     validate_uploaded_file(image, max_size_mb=25) # Slightly higher limit for classroom photos
     
     start_time = time.time()
-    file_bytes = await image.read()
+    file_bytes = image.file.read()
     ext = image.filename.lower().split('.')[-1]
     
     # 2. Decode Image for Cropping
@@ -252,56 +247,3 @@ async def extract_classroom_faces(image: UploadFile = File(...)):
     finally:
         if os.path.exists(temp_path):
             os.remove(temp_path)
-
-
-@app.post("/api/v1/agent/mail", response_model=AgentResponse)
-async def run_mail_agent(request: AgentQueryRequest):
-    """
-    Exposes the Mail Agent as an API route.
-    Processes natural language queries to identify students and send attendance warning emails.
-    """
-    print(f"\n[AGENT START] ---> Received Query: {request.query}")
-    
-    try:
-        # Run the compiled LangGraph
-        result = graph.invoke({
-            "messages": [HumanMessage(content=request.query)]
-        })
-        
-        # Determine success based on the agent's internal status
-        status = result.get("status", "unknown")
-        error_msg = result.get("error", "")
-        
-        # Define logic for success
-        is_success = status in ["emails_processed", "partial_failure"]
-        
-        # If every single email failed, we count it as a failure
-        if status == "all_emails_failed":
-            is_success = False
-
-        message = "Mail Agent processing complete"
-        if status == "no_students_found":
-            message = "No students met the criteria for this query."
-        elif status == "all_emails_failed":
-            message = "Students found, but all emails failed to send. Check system logs."
-        elif status == "partial_failure":
-            message = "Some emails sent successfully, but others failed."
-
-        return {
-            "success": is_success,
-            "status": status,
-            "message": error_msg if not is_success and error_msg else message,
-            "data": {
-                "sent_count": len(result.get("emails_sent", [])),
-                "failed_count": len(result.get("emails_failed", [])),
-                "total_found": len(result.get("candidate_students", [])),
-                "errors": result.get("email_errors", [])
-            }
-        }
-
-    except Exception as e:
-        print(f"[AGENT FATAL ERROR] {str(e)}")
-        raise HTTPException(status_code=500, detail={
-            "code": "AGENT_EXECUTION_ERROR",
-            "message": str(e)
-        })
