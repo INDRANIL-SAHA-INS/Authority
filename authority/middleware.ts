@@ -13,7 +13,11 @@ export default auth(async (req) => {
   const isLoggedIn = !!req.auth;
 
   // 1. Whitelist for public routes (API and Web)
-  const isPublicApi = path.startsWith('/api/auth') || path.startsWith('/api/mobile/login') || path.startsWith('/api/send_student_data_for_email');
+  const isPublicApi = 
+    path.startsWith('/api/auth') || 
+    path.startsWith('/api/mobile/login') || 
+    path.startsWith('/api/send_student_data_for_email') ||
+    path.startsWith('/api/teacher/marks_upload/call_backs'); // <--- Allow Python callback
   const isPublicPage = path === '/';
   
   // Also allow static files and internal Next.js paths just in case the matcher misses them

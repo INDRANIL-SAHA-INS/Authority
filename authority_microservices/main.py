@@ -20,7 +20,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 # ── Service imports ────────────────────────────────────────────────────────────
-from Marks_extraction import extract_marks_from_document
+from Marks_extraction import extract_marks_from_document, transform_to_db_friendly, get_schema_mapping
+import httpx
 from mail_agent.graph import graph as mail_graph
 from mail_agent.schema import SubjectContext
 from langchain_core.messages import HumanMessage, AIMessage
@@ -181,6 +182,119 @@ async def extract_marks(
         # Always clean up the temp file
         if tmp_path and os.path.exists(tmp_path):
             os.remove(tmp_path)
+
+
+# ── Async Extraction Logic ───────────────────────────────────────────────────
+
+async def process_marks_task(
+    tmp_path: str, 
+    file_name: str, 
+    file_type: str, 
+    callback_url: str, 
+    job_id: str
+):
+    """Background task to extract, map, and send data back to Next.js."""
+    print(f"\n[JOB {job_id}] STARTING EXTRACTION for {file_name}...")
+    try:
+        # 1. Extraction
+        result = extract_marks_from_document(tmp_path, file_type)
+        metadata = result.get("metadata", {})
+        records = result.get("records", [])
+        print(f"[JOB {job_id}] EXTRACTION COMPLETE. Found {len(records)} records.")
+
+        # 2. AI Mapping (Discovery)
+        print(f"[JOB {job_id}] CALLING AI FOR SCHEMA DISCOVERY...")
+        mapping = get_schema_mapping(metadata, records)
+        print(f"[JOB {job_id}] AI MAPPING COMPLETE: {mapping}")
+
+        # 3. Transformation
+        print(f"[JOB {job_id}] TRANSFORMING DATA TO DB-FRIENDLY FORMAT...")
+        db_friendly_data = transform_to_db_friendly(result, mapping)
+
+        # 4. Callback
+        print(f"[JOB {job_id}] SENDING CALLBACK TO NEXT.JS: {callback_url}")
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                callback_url,
+                json={
+                    "job_id": job_id,
+                    "success": True,
+                    "data": db_friendly_data
+                },
+                timeout=60.0
+            )
+            print(f"[JOB {job_id}] CALLBACK SENT. RESPONSE STATUS: {resp.status_code}")
+
+    except Exception as e:
+        print(f"!!! [JOB {job_id}] ASYNC TASK FAILED: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
+    except Exception as e:
+        print(f"ASYNC TASK FAILED for job {job_id}: {str(e)}")
+        # Send error back to callback
+        try:
+            async with httpx.AsyncClient() as client:
+                await client.post(
+                    callback_url,
+                    json={
+                        "job_id": job_id,
+                        "success": False,
+                        "error": str(e)
+                    },
+                    timeout=30.0
+                )
+        except:
+            pass
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+
+@app.post(
+    "/api/marks/async-extract",
+    summary="[ASYNC] Extract marks and return results via webhook",
+    tags=["Marks Extraction"],
+)
+async def async_extract_marks(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    callback_url: str = Form(...),
+    job_id: str = Form(...),
+):
+    """
+    Starts a background extraction job. 
+    Returns immediately with a 'queued' status.
+    """
+    original_filename = file.filename or "upload"
+    _, ext = os.path.splitext(original_filename)
+    ext = ext.lower()
+
+    if ext not in ALLOWED_MARKS_EXTENSIONS:
+        raise HTTPException(status_code=400, detail=f"Unsupported file type {ext}")
+
+    # Save to persistent temp file for the background worker
+    # We DON'T delete it here; the background task will delete it.
+    fd, tmp_path = tempfile.mkstemp(suffix=ext)
+    try:
+        with os.fdopen(fd, 'wb') as tmp:
+            shutil.copyfileobj(file.file, tmp)
+    except:
+        os.close(fd)
+        os.remove(tmp_path)
+        raise
+
+    # Queue the background task
+    background_tasks.add_task(
+        process_marks_task,
+        tmp_path=tmp_path,
+        file_name=original_filename,
+        file_type=ext.lstrip("."),
+        callback_url=callback_url,
+        job_id=job_id
+    )
+
+    return {"status": "processing", "job_id": job_id}
 
 
 

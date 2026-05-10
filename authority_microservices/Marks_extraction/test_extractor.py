@@ -4,7 +4,8 @@ import os
 
 # Ensure the parent directory is in sys.path so Python treats this folder as a package
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from Marks_extraction.extractor_service import extract_marks_from_document
+from Marks_extraction.extractor_service import extract_marks_from_document, transform_to_db_friendly
+from Marks_extraction.mapping_service import get_schema_mapping
 
 def main():
     print("=== Marks Extractor Test CLI ===")
@@ -45,23 +46,29 @@ def main():
         metadata = result.get("metadata", {})
         records  = result.get("records", [])
 
-        # Print metadata section
-        print("\n--- Document Metadata ---")
-        if metadata:
-            print(json.dumps(metadata, indent=2))
-        else:
-            print("(No metadata found)")
+        # 1. AI Schema Discovery
+        print("\n=== AI Schema Discovery (Ollama) ===")
+        print("Discovering mappings for database columns and sub-parts...")
+        mapping = get_schema_mapping(metadata, records)
+        print("Mapping Discovered:")
+        print(json.dumps(mapping, indent=2))
 
-        # Print records section
-        print(f"\n--- Extracted Records ({len(records)} rows) ---")
-        print(json.dumps(records, indent=2))
-
+        # 2. Transform to DB-Friendly format
+        print("\n=== Transforming to DB-Friendly JSON ===")
+        db_friendly_result = transform_to_db_friendly(result, mapping)
+        
         # Save the full structured output to test_output.json
         script_dir = os.path.dirname(os.path.abspath(__file__))
         out_path = os.path.join(script_dir, 'test_output.json')
         with open(out_path, 'w') as f:
-            json.dump(result, f, indent=2)
-        print(f"\nSaved full output to {out_path}")
+            json.dump(db_friendly_result, f, indent=2)
+            
+        print(f"\nSUCCESS: Saved DB-friendly output to {out_path}")
+        
+        # Print a sample record
+        if db_friendly_result["records"]:
+            print("\nSample Transformed Record:")
+            print(json.dumps(db_friendly_result["records"][0], indent=2))
 
     except Exception as e:
         import traceback

@@ -10,7 +10,7 @@ datasource db {
 }
 
 model Department {
-  department_id      BigInt    @id @default(autoincrement()) @map("department_id")
+  department_id      BigInt    @id @map("department_id")
   department_code    String?
   department_name    String?
   department_head_id BigInt?   @unique
@@ -30,7 +30,7 @@ model Department {
 }
 
 model Classroom {
-  classroom_id          BigInt              @id @default(autoincrement()) @map("classroom_id")
+  classroom_id          BigInt              @id @map("classroom_id")
   room_number           String?             @unique
   building_name         String?
   floor_number          Int?
@@ -49,7 +49,7 @@ model Classroom {
 }
 
 model TimeSlot {
-  time_slot_id     BigInt      @id @default(autoincrement()) @map("time_slot_id")
+  time_slot_id     BigInt      @id @map("time_slot_id")
   slot_name        String      @unique
   start_time       DateTime?   @db.Time
   end_time         DateTime?   @db.Time
@@ -63,12 +63,12 @@ model TimeSlot {
 }
 
 model Subject {
-  subject_id           BigInt                     @id @default(autoincrement()) @map("subject_id")
+  subject_id           BigInt                     @id @map("subject_id")
   subject_code         String?
   subject_name         String?
   program_id           BigInt
   semester_number      Int?
-  subject_order        Int?
+
   subject_category     String?
   credits              Int?
   subject_type         String?
@@ -96,7 +96,7 @@ model Subject {
 }
 
 model Teacher {
-  teacher_id           BigInt                     @id @default(autoincrement()) @map("teacher_id")
+  teacher_id           BigInt                     @id @map("teacher_id")
   user_id              BigInt?                    @unique @map("user_id")
   employee_id          String?
   first_name           String?
@@ -124,6 +124,7 @@ model Teacher {
   timetables           Timetable[]
   attendance_sessions  AttendanceSession[]
   topic_coverage       TopicCoverage[]
+  marks_upload_jobs    MarksUploadJob[]
 
   @@unique([employee_id])
   @@index([department_id])
@@ -132,7 +133,7 @@ model Teacher {
 }
 
 model Program {
-  program_id             BigInt                   @id @default(autoincrement()) @map("program_id")
+  program_id             BigInt                   @id @map("program_id")
   department_id          BigInt
   program_code           String?
   program_name           String?
@@ -159,7 +160,7 @@ model Program {
 }
 
 model Batch {
-  batch_id                 BigInt                     @id @default(autoincrement()) @map("batch_id")
+  batch_id                 BigInt                     @id @map("batch_id")
   program_id               BigInt
   admission_year           Int?
   expected_graduation_year Int?
@@ -187,7 +188,7 @@ model Batch {
 }
 
 model Section {
-  section_id          BigInt                     @id @default(autoincrement()) @map("section_id")
+  section_id          BigInt                     @id @map("section_id")
   batch_id            BigInt
   section_name        String?
   classroom_id        BigInt?
@@ -211,7 +212,7 @@ model Section {
 }
 
 model Student {
-  student_id             BigInt              @id @default(autoincrement()) @map("student_id")
+  student_id             BigInt              @id @map("student_id")
   user_id                BigInt?             @unique @map("user_id")
   university_roll_number String?
   registration_number    String?
@@ -260,7 +261,7 @@ model Student {
 }
 
 model Guardian {
-  guardian_id     BigInt   @id @default(autoincrement()) @map("guardian_id")
+  guardian_id     BigInt   @id @map("guardian_id")
   student_id      BigInt   @unique
   father_name     String?
   mother_name     String?
@@ -282,7 +283,7 @@ model Guardian {
 }
 
 model StudentBacklog {
-  backlog_id          BigInt   @id @default(autoincrement()) @map("backlog_id")
+  backlog_id          BigInt   @id @map("backlog_id")
   student_id          BigInt
   subject_id          BigInt
   semester_number     Int
@@ -301,7 +302,7 @@ model StudentBacklog {
 }
 
 model SubjectEnrollment {
-  enrollment_id   BigInt          @id @default(autoincrement()) @map("enrollment_id")
+  enrollment_id   BigInt          @id @map("enrollment_id")
   student_id      BigInt
   subject_id      BigInt
   period_id       BigInt
@@ -319,7 +320,7 @@ model SubjectEnrollment {
 }
 
 model Exam {
-  exam_id         BigInt             @id @default(autoincrement()) @map("exam_id")
+  exam_id         BigInt             @id @map("exam_id")
   subject_id      BigInt
   batch_id        BigInt
   period_id       BigInt
@@ -328,23 +329,33 @@ model Exam {
   passing_marks   Float
   exam_date       DateTime?
   status          String?      @default("HIDDEN") // HIDDEN, OPEN, CLOSED, DECLARED
+  
+  // Marks Distribution Metadata
+  components      Json?        @map("components")
+
   created_at      DateTime     @default(now())
   updated_at      DateTime     @updatedAt
   subject         Subject      @relation(fields: [subject_id], references: [subject_id])
   batch           Batch        @relation(fields: [batch_id], references: [batch_id])
   period          AcademicPeriod @relation(fields: [period_id], references: [period_id])
   results         ExamResult[]
+  marks_upload_jobs MarksUploadJob[]
 
+  @@unique([subject_id, batch_id, period_id, exam_type])
   @@index([subject_id, batch_id])
   @@map("exams")
 }
 
 model ExamResult {
-  result_id      BigInt   @id @default(autoincrement()) @map("result_id")
+  result_id      BigInt   @id @map("result_id")
   exam_id        BigInt
   student_id     BigInt
   marks_obtained Float?
   is_absent      Boolean  @default(false)
+  
+  // Breakdown of marks
+  sub_marks      Json?    @map("sub_marks")
+
   is_pass        Boolean?
   remarks        String?
   created_at     DateTime @default(now())
@@ -357,8 +368,24 @@ model ExamResult {
   @@map("exam_results")
 }
 
+model MarksUploadJob {
+  job_id          String   @id @default(uuid()) @map("job_id")
+  teacher_id      BigInt
+  exam_id         BigInt?
+  file_name       String
+  status          String   @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
+  error_message   String?  @db.Text
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  teacher         Teacher  @relation(fields: [teacher_id], references: [teacher_id])
+  exam            Exam?    @relation(fields: [exam_id], references: [exam_id])
+
+  @@map("marks_upload_jobs")
+}
+
 model TeacherSubjectAssignment {
-  assignment_id           BigInt          @id @default(autoincrement()) @map("assignment_id")
+  assignment_id           BigInt          @id @map("assignment_id")
   teacher_id              BigInt
   subject_id              BigInt
   batch_id                BigInt
@@ -383,7 +410,7 @@ model TeacherSubjectAssignment {
 }
 
 model Timetable {
-  timetable_id        BigInt              @id @default(autoincrement()) @map("timetable_id")
+  timetable_id        BigInt              @id @map("timetable_id")
   teacher_id          BigInt
   subject_id          BigInt
   batch_id            BigInt
@@ -415,7 +442,7 @@ model Timetable {
 }
 
 model FaceData {
-  face_id             BigInt    @id @default(autoincrement()) @map("face_id")
+  face_id             BigInt    @id @map("face_id")
   student_id          BigInt
   image_path          String?
   face_encoding       String?   @db.Text
@@ -436,7 +463,7 @@ model FaceData {
 }
 
 model AttendanceSession {
-  session_id         BigInt             @id @default(autoincrement()) @map("session_id")
+  session_id         BigInt             @id @map("session_id")
   timetable_id       BigInt
   teacher_id         BigInt
   subject_id         BigInt
@@ -471,7 +498,7 @@ model AttendanceSession {
 }
 
 model AttendanceRecord {
-  attendance_id        BigInt            @id @default(autoincrement()) @map("attendance_id")
+  attendance_id        BigInt            @id @map("attendance_id")
   session_id           BigInt
   student_id           BigInt
   attendance_status    String?
@@ -492,7 +519,7 @@ model AttendanceRecord {
 }
 
 model AttendanceSummary {
-  summary_id            BigInt          @id @default(autoincrement()) @map("summary_id")
+  summary_id            BigInt          @id @map("summary_id")
   student_id            BigInt
   subject_id            BigInt
   period_id             BigInt
@@ -514,7 +541,7 @@ model AttendanceSummary {
 }
 
 model LibraryVisitLog {
-  library_log_id       BigInt    @id @default(autoincrement()) @map("library_log_id")
+  library_log_id       BigInt    @id @map("library_log_id")
   user_id              BigInt    @map("user_id")
 
   library_entry_at     DateTime  @map("library_entry_at")
@@ -535,7 +562,8 @@ model LibraryVisitLog {
 }
 
 model User {
-  user_id       BigInt    @id @default(autoincrement()) @map("user_id")
+  user_id       BigInt    @id @map("user_id")
+  account_identifier String?   @unique @map("account_identifier")
   email         String    @unique
   password_hash String?
   role          String    @default("STUDENT") // STUDENT, TEACHER, ADMIN
@@ -554,7 +582,7 @@ model User {
 }
 
 model Admin {
-  admin_id      BigInt    @id @default(autoincrement()) @map("admin_id")
+  admin_id      BigInt    @id @map("admin_id")
   user_id       BigInt    @unique @map("user_id")
   
   employee_id   String?   @unique @map("employee_id")
@@ -572,7 +600,7 @@ model Admin {
 }
 
 model AcademicPeriod {
-  period_id       BigInt             @id @default(autoincrement()) @map("period_id")
+  period_id       BigInt             @id @map("period_id")
   name            String             // e.g., "Aug-Dec 2024"
   academic_year   String             // e.g., "2024-25"
   term_type       String?            // e.g., "ODD", "EVEN"

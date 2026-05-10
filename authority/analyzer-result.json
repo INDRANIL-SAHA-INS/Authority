@@ -1,0 +1,167 @@
+{
+  "levelCount": 1,
+  "levels": {
+    "0": [
+      "Department",
+      "Classroom",
+      "TimeSlot",
+      "Subject",
+      "Teacher",
+      "Program",
+      "Batch",
+      "Section",
+      "Student",
+      "Guardian",
+      "StudentBacklog",
+      "SubjectEnrollment",
+      "Exam",
+      "ExamResult",
+      "MarksUploadJob",
+      "TeacherSubjectAssignment",
+      "Timetable",
+      "FaceData",
+      "AttendanceSession",
+      "AttendanceRecord",
+      "AttendanceSummary",
+      "LibraryVisitLog",
+      "User",
+      "Admin",
+      "AcademicPeriod",
+      "BatchSemester",
+      "SyllabusModule",
+      "SyllabusTopic",
+      "SyllabusResource",
+      "TopicCoverage",
+      "ModuleQuestion",
+      "ModulePracticeResult",
+      "Department",
+      "Classroom",
+      "TimeSlot",
+      "Subject",
+      "Teacher",
+      "Program",
+      "Batch",
+      "Section",
+      "Student",
+      "Guardian",
+      "StudentBacklog",
+      "SubjectEnrollment",
+      "Exam",
+      "ExamResult",
+      "MarksUploadJob",
+      "TeacherSubjectAssignment",
+      "Timetable",
+      "FaceData",
+      "AttendanceSession",
+      "AttendanceRecord",
+      "AttendanceSummary",
+      "LibraryVisitLog",
+      "User",
+      "Admin",
+      "AcademicPeriod",
+      "BatchSemester",
+      "SyllabusModule",
+      "SyllabusTopic",
+      "SyllabusResource",
+      "TopicCoverage",
+      "ModuleQuestion",
+      "ModulePracticeResult"
+    ]
+  },
+  "tableCount": 32,
+  "sampleTable": "Department",
+  "sampleData": {
+    "name": "Department",
+    "level": 0,
+    "dependencies": [],
+    "dependents": [],
+    "rowCount": 3,
+    "isHotTable": false,
+    "fields": [
+      {
+        "name": "department_id",
+        "type": "BigInt",
+        "isForeignKey": false,
+        "relationTo": "BigInt"
+      },
+      {
+        "name": "department_code",
+        "type": "String",
+        "isForeignKey": false,
+        "relationTo": "String"
+      },
+      {
+        "name": "department_name",
+        "type": "String",
+        "isForeignKey": false,
+        "relationTo": "String"
+      },
+      {
+        "name": "department_head_id",
+        "type": "BigInt",
+        "isForeignKey": false,
+        "relationTo": "BigInt"
+      },
+      {
+        "name": "office_location",
+        "type": "String",
+        "isForeignKey": false,
+        "relationTo": "String"
+      },
+      {
+        "name": "contact_email",
+        "type": "String",
+        "isForeignKey": false,
+        "relationTo": "String"
+      },
+      {
+        "name": "contact_phone",
+        "type": "String",
+        "isForeignKey": false,
+        "relationTo": "String"
+      },
+      {
+        "name": "established_year",
+        "type": "Int",
+        "isForeignKey": false,
+        "relationTo": "Int"
+      },
+      {
+        "name": "status",
+        "type": "String",
+        "isForeignKey": false,
+        "relationTo": "String"
+      },
+      {
+        "name": "created_at",
+        "type": "DateTime",
+        "isForeignKey": false,
+        "relationTo": "DateTime"
+      },
+      {
+        "name": "updated_at",
+        "type": "DateTime",
+        "isForeignKey": false,
+        "relationTo": "DateTime"
+      },
+      {
+        "name": "department_head",
+        "type": "Teacher",
+        "isForeignKey": true,
+        "relationTo": "Teacher"
+      },
+      {
+        "name": "teachers",
+        "type": "Teacher",
+        "isForeignKey": true,
+        "relationTo": "Teacher"
+      },
+      {
+        "name": "programs",
+        "type": "Program",
+        "isForeignKey": true,
+        "relationTo": "Program"
+      }
+    ]
+  }
+}

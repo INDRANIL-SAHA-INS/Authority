@@ -20,7 +20,8 @@ export async function POST(request: Request) {
     }
 
     // 3. Match password
-    const isPasswordValid = password === user.password_hash;
+    const { compare } = await import("bcryptjs");
+    const isPasswordValid = await compare(password, user.password_hash);
 
     if (!isPasswordValid) {
       return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });

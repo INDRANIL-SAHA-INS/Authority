@@ -27,8 +27,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             throw new Error("Invalid credentials.");
           }
 
-          // Match password word by word (plaintext) as requested
-          const isPasswordValid = password === user.password_hash;
+          // Compare hashed password using bcryptjs
+          const { compare } = await import("bcryptjs");
+          const isPasswordValid = await compare(password, user.password_hash);
 
           if (!isPasswordValid) {
             throw new Error("Invalid credentials.");

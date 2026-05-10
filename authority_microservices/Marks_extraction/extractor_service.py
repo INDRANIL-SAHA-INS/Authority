@@ -77,3 +77,60 @@ def extract_marks_from_document(file_path: str, file_type: str = None) -> dict:
         raise ValueError(f"Unsupported file type: {file_type}")
 
     return {"metadata": metadata, "records": records}
+
+
+def transform_to_db_friendly(raw_data: dict, mapping: dict) -> dict:
+    """
+    Transforms raw extracted records into a 'Database Friendly' format 
+    using the provided AI-generated mapping.
+    """
+    routing = mapping.get("column_routing", {})
+    sub_parts = mapping.get("sub_parts", [])
+    
+    marks_key = routing.get("marks_obtained_key")
+    student_key = routing.get("student_identifier_key")
+    
+    transformed_records = []
+    
+    for record in raw_data.get("records", []):
+        # 1. Extract Total Marks and handle Absent state
+        raw_total = record.get(marks_key)
+        is_absent = (raw_total == "AB" or raw_total == "" or raw_total is None)
+        
+        try:
+            marks_obtained = 0.0 if is_absent else float(raw_total)
+        except (ValueError, TypeError):
+            marks_obtained = 0.0
+            is_absent = True # Treat invalid non-numeric as absent/error
+            
+        # 2. Build sub_marks JSON object
+        sub_marks = {}
+        for part in sub_parts:
+            r_key = part["raw_key"]
+            m_name = part["meaningful_name"]
+            val = record.get(r_key)
+            
+            # Normalize sub-mark value
+            if val == "AB" or val == "" or val is None:
+                sub_marks[m_name] = 0.0
+            else:
+                try:
+                    sub_marks[m_name] = float(val)
+                except:
+                    sub_marks[m_name] = 0.0
+                    
+        # 3. Assemble the friendly record
+        transformed_records.append({
+            "university_roll_number": str(record.get(student_key, "")).strip(),
+            "marks_obtained": marks_obtained,
+            "is_absent": is_absent,
+            "sub_marks": sub_marks
+        })
+        
+    return {
+        "metadata": {
+            "canonical_components": [p["meaningful_name"] for p in sub_parts],
+            "original_metadata": raw_data.get("metadata", {})
+        },
+        "records": transformed_records
+    }
