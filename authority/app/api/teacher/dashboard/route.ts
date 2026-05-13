@@ -86,18 +86,18 @@ export async function GET(request: NextRequest) {
     const todaySchedule = teacher.timetables.map((slot) => {
       if (!slot.time_slot?.start_time || !slot.time_slot?.end_time) return null;
 
-      // Map the Time from DB onto today's actual date in IST
+      // Anchor the date to Today (IST Aware)
       const createISTDate = (timeDate: Date) => {
-        const d = new Date(now);
-        d.setUTCHours(timeDate.getUTCHours(), timeDate.getUTCMinutes(), 0, 0);
-        return new Date(d.getTime() - istOffset);
+        const d = new Date(istTime); 
+        d.setHours(timeDate.getUTCHours(), timeDate.getUTCMinutes(), 0, 0);
+        return d;
       };
 
       const startDT = createISTDate(slot.time_slot.start_time);
       const endDT = createISTDate(slot.time_slot.end_time);
 
       return {
-        id: slot.timetable_id, // safeJson handles the BigInt conversion
+        id: slot.timetable_id,
         subjectName: slot.subject.subject_name ?? null,
         subjectCode: slot.subject.subject_code ?? null,
         type: slot.subject.subject_type ?? null,
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
         room: slot.classroom.room_number ?? null,
         timings: {
           display: slot.time_slot.slot_name ?? null,
-          startTime: startDT.toISOString(),
+          startTime: startDT.toISOString(), 
           endTime: endDT.toISOString(),
           startLabel: startDT.toLocaleTimeString('en-US', { 
             hour: 'numeric', 
@@ -120,13 +120,17 @@ export async function GET(request: NextRequest) {
             minute: '2-digit', 
             hour12: true, 
             timeZone: 'Asia/Kolkata' 
-          })
+          }),
+          isoStart: startDT.toISOString(), // Keep for other UI needs
+          isoEnd: endDT.toISOString()
         }
       };
     }).filter(Boolean);
 
     // --- Step 5: Build the clean response payload ---
     const response = {
+      success: true,
+      serverTime: now.toISOString(),
       profile: {
         fullName: `${teacher.first_name ?? ""} ${teacher.last_name ?? ""}`.trim(),
         department: teacher.department?.department_name ?? null,
@@ -139,6 +143,8 @@ export async function GET(request: NextRequest) {
         totalClassesToday: todaySchedule.length,
       },
     };
+
+    console.log("Teacher Dashboard Response:", safeJson(response));
 
     return new Response(safeJson(response), {
       status: 200,

@@ -76,12 +76,13 @@ export async function GET(req: NextRequest) {
     });
 
     const subjectStatsMap: Record<string, any> = {};
-    let grandConducted = 0, grandAttended = 0, grandMissed = 0;
+    let grandConducted = 0, grandAttended = 0, grandMissed = 0, grandSafeBunks = 0;
 
     attendanceSummaries.forEach(s => {
       const c = s.total_classes ?? 0, a = s.classes_attended ?? 0, m = s.classes_missed ?? 0;
-      grandConducted += c; grandAttended += a; grandMissed += m;
-      subjectStatsMap[s.subject_id.toString()] = { ...getStats(c, a), missed: m };
+      const sb = s.safe_bunks ?? 0;
+      grandConducted += c; grandAttended += a; grandMissed += m; grandSafeBunks += sb;
+      subjectStatsMap[s.subject_id.toString()] = { ...getStats(c, a), missed: m, safeToMiss: sb };
     });
 
     // 4. Map All Classes for Today (Corrected Timezone Logic)
@@ -101,7 +102,9 @@ export async function GET(req: NextRequest) {
       
       return {
         id: row.timetable_id.toString(),
-        tag: row.subject?.subject_type?.toUpperCase().includes("LAB") ? "Lab" : "Lec",
+        subjectId: row.subject_id.toString(),
+        subjectCode: row.subject?.subject_code || "N/A",
+        tag: row.subject?.subject_type?.toUpperCase().includes("LAB") ? "Lab" : "Theory",
         courseName: row.subject?.subject_name || "Unknown Course",
         instructor: {
           name: row.teacher ? `${row.teacher.first_name} ${row.teacher.last_name}` : "TBD",
@@ -143,8 +146,9 @@ export async function GET(req: NextRequest) {
           residenceStatus: "Day Scholar"
         },
         overallAttendance: {
-          ...getStats(grandConducted, grandAttended),
-          missed: grandMissed
+          percentage: grandConducted > 0 ? Math.round((grandAttended / grandConducted) * 100) : 0,
+          missed: grandMissed,
+          safeBunks: grandSafeBunks
         },
         todaySchedule
       }

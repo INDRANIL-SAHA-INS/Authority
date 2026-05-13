@@ -527,6 +527,7 @@ model AttendanceSummary {
   classes_attended      Int?
   classes_missed        Int?
   attendance_percentage Float?
+  safe_bunks           Int             @default(0)
   last_updated          DateTime        @default(now())
   updated_at            DateTime        @updatedAt
   student               Student         @relation(fields: [student_id], references: [student_id])

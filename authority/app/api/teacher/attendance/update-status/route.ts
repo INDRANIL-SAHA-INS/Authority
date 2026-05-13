@@ -133,6 +133,8 @@ async function updateAttendance(req: NextRequest) {
     const classesMissed = allRecords.filter(r => r.attendance_status === "ABSENT").length;
     const attendancePercentage = totalClasses > 0 ? (classesAttended / totalClasses) * 100 : 0;
 
+    const safeBunks = Math.floor(classesAttended / 0.8) - totalClasses;
+
     // 7. Update the summary table
     await prisma.attendanceSummary.upsert({
       where: {
@@ -147,6 +149,7 @@ async function updateAttendance(req: NextRequest) {
         classes_attended: classesAttended,
         classes_missed: classesMissed,
         attendance_percentage: attendancePercentage,
+        safe_bunks: safeBunks,
         last_updated: new Date()
       },
       create: {
@@ -156,7 +159,8 @@ async function updateAttendance(req: NextRequest) {
         total_classes: totalClasses,
         classes_attended: classesAttended,
         classes_missed: classesMissed,
-        attendance_percentage: attendancePercentage
+        attendance_percentage: attendancePercentage,
+        safe_bunks: safeBunks
       }
     });
 

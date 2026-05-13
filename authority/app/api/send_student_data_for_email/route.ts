@@ -138,6 +138,7 @@ export async function POST(request: NextRequest) {
             total_sessions: totalSessions,
             attended_sessions: attended,
             attendance_percentage: percentage,
+            safe_bunks: Math.floor(attended / 0.8) - totalSessions,
             is_short_attendance: threshold !== null ? percentage <= threshold : null,
             target_threshold: threshold,
             source: "manual_calculation"
@@ -175,6 +176,7 @@ export async function POST(request: NextRequest) {
           total_sessions: summary?.total_classes || 0,
           attended_sessions: summary?.classes_attended || 0,
           attendance_percentage: percentage,
+          safe_bunks: summary?.safe_bunks || 0,
           is_short_attendance: threshold !== null ? percentage <= threshold : null,
           target_threshold: threshold,
           source: "attendance_summary"

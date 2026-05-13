@@ -154,7 +154,22 @@ export async function POST(request: NextRequest) {
             });
 
             // PRE-CALCULATE ACCURACY: Update AttendanceSummary for Student Dashboard
-            // This increments the 'scoreboard' in real-time
+            const currentSummary = await tx.attendanceSummary.findUnique({
+                where: {
+                    student_id_subject_id_period_id: {
+                        student_id: student.student_id,
+                        subject_id: timetable.subject_id,
+                        period_id: timetable.period_id
+                    }
+                }
+            });
+
+            const nTotal = (currentSummary?.total_classes || 0) + 1;
+            const nAttended = (currentSummary?.classes_attended || 0) + (isPresent ? 1 : 0);
+            const nMissed = (currentSummary?.classes_missed || 0) + (isPresent ? 0 : 1);
+            const nPercentage = (nAttended / nTotal) * 100;
+            const nSafeBunks = Math.floor(nAttended / 0.8) - nTotal;
+
             await tx.attendanceSummary.upsert({
                 where: {
                     student_id_subject_id_period_id: {
@@ -164,10 +179,11 @@ export async function POST(request: NextRequest) {
                     }
                 },
                 update: {
-                    total_classes: { increment: 1 },
-                    classes_attended: { increment: isPresent ? 1 : 0 },
-                    classes_missed: { increment: isPresent ? 0 : 1 },
-                    // percentage will be updated via a separate periodic clean-up or computed on-display
+                    total_classes: nTotal,
+                    classes_attended: nAttended,
+                    classes_missed: nMissed,
+                    attendance_percentage: nPercentage,
+                    safe_bunks: nSafeBunks,
                     last_updated: new Date()
                 },
                 create: {
@@ -177,7 +193,8 @@ export async function POST(request: NextRequest) {
                     total_classes: 1,
                     classes_attended: isPresent ? 1 : 0,
                     classes_missed: isPresent ? 0 : 1,
-                    attendance_percentage: isPresent ? 100 : 0
+                    attendance_percentage: isPresent ? 100 : 0,
+                    safe_bunks: isPresent ? 0 : -1
                 }
             });
         }

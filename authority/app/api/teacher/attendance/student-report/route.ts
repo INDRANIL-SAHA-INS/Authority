@@ -185,6 +185,7 @@ export async function GET(req: NextRequest) {
             totalClasses: summary?.total_classes || 0,
             classesAttended: summary?.classes_attended || 0,
             classesMissed: summary?.classes_missed || 0,
+            safeBunks: summary?.safe_bunks || 0,
           },
           calendar: calendarMap,
         },

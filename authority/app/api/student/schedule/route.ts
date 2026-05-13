@@ -128,7 +128,7 @@ export async function GET(req: NextRequest) {
           subject_id: e.subject.subject_id.toString(),
           subject_code: e.subject.subject_code,
           subject_name: e.subject.subject_name,
-          subject_type: e.subject.subject_type,
+          subject_type: e.subject.subject_type?.toUpperCase().includes("LAB") ? "Lab" : "Theory",
           credits: e.subject.credits
         },
         section: {
@@ -140,6 +140,8 @@ export async function GET(req: NextRequest) {
           }
         },
         attendancePercentage: attendance ? Math.round(attendance.attendance_percentage || 0) : 0,
+        safeToMiss: attendance?.safe_bunks || 0,
+        classesMissed: attendance?.classes_missed || 0,
         teacher: {
           name: assignment ? `${assignment.teacher.first_name} ${assignment.teacher.last_name}` : "Not Assigned"
         }
