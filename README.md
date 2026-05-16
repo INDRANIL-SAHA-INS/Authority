@@ -1,127 +1,131 @@
+# 🏛️ AUTHORITY: The AI-Driven Campus Operating System
+
 <div align="center">
-
-# 🏛️ AUTHORITY
-### *The Intelligent Neural Core for Modern Campus Governance*
-
-[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-v0.109-05998b?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
-[![Prisma](https://img.shields.io/badge/Prisma-ORM-2d3748?style=for-the-badge&logo=prisma)](https://www.prisma.io/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-v16-336791?style=for-the-badge&logo=postgresql)](https://www.postgresql.org/)
-[![Python](https://img.shields.io/badge/Python-v3.11-3776ab?style=for-the-badge&logo=python)](https://www.python.org/)
-[![LangGraph](https://img.shields.io/badge/LangGraph-Agentic-blue?style=for-the-badge&logo=langchain)](https://github.com/langchain-ai/langgraph)
-
----
-
-**Authority** is not just a management system; it is a distributed, high-performance ecosystem engineered to redefine academic administration through **Computer Vision**, **Agentic AI**, and **Distributed System Architectures**.
-
-[**Explore the Vision**](#-architectural-pillars) • [**Core Features**](#-engineered-excellence) • [**System Architecture**](#-the-neural-map)
-
+  <img src="https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js" alt="Next.js" />
+  <img src="https://img.shields.io/badge/FastAPI-v0.109-05998b?style=for-the-badge&logo=fastapi" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/Prisma-ORM-2d3748?style=for-the-badge&logo=prisma" alt="Prisma" />
+  <img src="https://img.shields.io/badge/PostgreSQL-v16-336791?style=for-the-badge&logo=postgresql" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/LangGraph-Agentic-blue?style=for-the-badge&logo=langchain" alt="LangGraph" />
 </div>
 
 ---
 
-## 🏛️ The Neural Map: System Architecture
+## 🌟 Vision & Objective
+**Authority** is a next-generation Educational Management System (EMS) engineered to eliminate the friction of campus administration. In an era where manual attendance and paperwork are bottlenecks, Authority introduces a **distributed neural architecture** that automates the core pillars of institutional life: **Attendance, Communication, and Performance Tracking.**
 
-Authority is built on a **Three-Tier Microservice Topology**, ensuring that compute-intensive AI tasks never bottleneck the mission-critical core management logic.
-
-![Detailed System Architecture](authority/all_md_folders/system_architecture_detailed.png)
-
-> [!NOTE]
-> The system orchestrates requests across a **Next.js Gateway**, a **FastAPI Compute Node**, and an **Agentic Utility Microservice**, communicating via low-latency REST and secure webhooks.
+Our mission was to build a system that doesn't just store data, but *understands* it, using Computer Vision and Agentic AI to serve as a 24/7 digital administrator.
 
 ---
 
-## 🚀 Architectural Pillars
+## 🏗️ System Architecture: The Triad Pattern
+The project follows a **distributed microservice topology**, separating mission-critical business logic from high-intensity computational tasks.
 
-### 1. The Gateway (`authority`)
-The central orchestrator built with **Next.js 15**. It handles the "Business Brain" of the system.
-- **State Management**: Prisma ORM with PostgreSQL for complex relational integrity.
-- **Edge Security**: JWT-based session management and Middleware-level protection.
-- **Orchestration**: Directing traffic to specialized AI nodes via secure handshakes.
+### 1. The Core Orchestrator (`authority`)
+The central gateway built with **Next.js 15**. It manages the primary relational database, user sessions, and orchestrates the flow of data between the AI compute nodes.
 
-### 2. The Vision Node (`authority_ai_service_backend`)
-A high-performance **FastAPI** environment dedicated to spatial compute.
-- **Face ID Pipeline**: Uses **RetinaFace** for detection and **ArcFace** for generating 512-dimensional facial embeddings.
-- **Real-time Verification**: Sub-second matching of students for automated attendance.
-- **Normalization Engine**: Validates and aligns face samples across Front, Left, and Right angles.
+### 2. The Vision Intelligence (`authority_ai_service_backend`)
+A specialized **FastAPI** node dedicated to spatial compute. It handles the high-performance face detection and biometric embedding pipeline.
 
-### 3. The Agentic Worker (`authority_microservices`)
-The "Smart Utility" layer powered by **LangGraph** and Local LLMs.
-- **Intelligent Mail Agent**: A goal-oriented agent that processes natural language (e.g., *"Notify all parents of low-attendance students"*) autonomously.
-- **Marks Extraction**: OCR-based pipeline with AI schema discovery to parse grading sheets from PDF/Excel/CSV.
+### 3. The Agentic Utility (`authority_microservices`)
+A utility layer powered by **LangGraph** and local LLMs. It handles intelligent communication (Mail Agent) and document processing (Marks Extraction).
+
+### 🗺️ Technical Architecture Diagram
+![System Architecture Detailed](assets/system_architecture_detailed.png)
 
 ---
 
-## 💎 Engineered Excellence
+## 🛠️ Core Methodologies & Technical Techniques
+As a backend-centric project, Authority implements several advanced engineering patterns to ensure it is robust, secure, and production-ready.
 
-As a backend-first ecosystem, Authority implements industry-standard patterns to ensure robustness:
+### ❄️ Distributed Unique Identifiers (Snowflake IDs)
+We moved away from predictable auto-incrementing integers. Authority uses a **Snowflake-inspired 64-bit ID generator**. This ensures:
+- **Horizontal Scalability**: IDs are unique across multiple database shards or microservices.
+- **Security**: Prevents ID enumeration attacks by being non-predictable.
+- **Time-Ordered**: Maintains natural chronological sorting of records.
 
-### ❄️ Snowflake ID Generation
-We avoid predictable auto-incrementing IDs. Every record in Authority is assigned a **64-bit Snowflake ID**, ensuring globally unique, time-ordered identifiers across distributed services.
+### 🔗 Transactional Atomic Integrity
+Complex operations (like multi-angle face enrollment or mass-attendance submission) are wrapped in **Prisma Transactions**. This ensures a "Success-or-Nothing" approach, preventing partial data corruption or orphaned records in the PostgreSQL database.
 
-### 🛡️ Type-Safe API Boundaries
-- **Zod (Frontend/Gateway)**: Strict runtime schema validation for every incoming request.
-- **Pydantic (Python Microservices)**: Data modeling with strict type enforcement and validation.
+### 🤖 Agentic Mail Dispatch Logic
+The **Mail Agent** isn't just a script; it's a **LangGraph-driven agent**.
+- **Intent Recognition**: Uses **Gemma 3:4b** to understand natural language instructions.
+- **Dynamic Retrieval**: Queries the Authority API to find relevant students/parents based on teacher instructions.
+- **Autonomous Execution**: Generates personalized content and dispatches via Gmail OAuth2.
 
-### 🔄 Transactional Atomic Operations
-Using **Prisma Transactions**, we ensure that complex operations—like simultaneous face enrollment across three angles or multi-student attendance processing—either succeed entirely or fail gracefully without data corruption.
+### 🎭 Biometric Pipeline: RetinaFace + ArcFace
+Our face detection system doesn't just "see" a face; it mathematically encodes it.
+- **Detection**: RetinaFace identifies faces even in poor lighting or angled shots (Left/Right).
+- **Embedding**: ArcFace converts the face into a **512-dimensional vector**.
+- **Normalization**: Ensures that Front, Left, and Right angles are processed to create a robust biometric profile.
 
----
-
-## 🖼️ Feature Spotlights
-
-### 🎭 AI Face Enrollment Workflow
-Ensuring identity integrity starts with a robust enrollment. Our pipeline processes multi-angle captures to build a comprehensive biometric profile.
-
-![Face Enrollment Workflow](authority/all_md_folders/face_enrollment_architecture.png)
-
-### ✉️ Agentic Institutional Communication
-The **Mail Agent** uses a local **Gemma 3:4b** model via Ollama, integrated into a LangGraph workflow to handle complex institutional messaging tasks with human-like understanding.
-
----
-
-## 🛠️ Tech Stack & Methods
-
-<table align="center">
-  <tr>
-    <td align="center" width="33%">
-      <b>Core Backend</b><br>
-      Next.js 15 (App Router)<br>
-      Prisma ORM<br>
-      PostgreSQL<br>
-      Auth.js / JWT
-    </td>
-    <td align="center" width="33%">
-      <b>AI & Computer Vision</b><br>
-      FastAPI / Python<br>
-      DeepFace / ArcFace<br>
-      RetinaFace Detector<br>
-      PyTorch
-    </td>
-    <td align="center" width="33%">
-      <b>Agentic AI</b><br>
-      LangGraph / LangChain<br>
-      Ollama (Gemma 3:4b)<br>
-      Google Gmail OAuth<br>
-      Tesseract OCR
-    </td>
-  </tr>
-</table>
+![Face Enrollment Architecture](assets/face_enrollment_architecture.png)
 
 ---
 
-## 📜 Development & Setup
+## 🚀 Key Features
+- **AI Face Attendance**: Automatic student identification from classroom group photos.
+- **Intelligent Marks Extraction**: Upload a PDF or Excel of exam marks; our AI discovers the schema and maps it to the database automatically.
+- **Natural Language Mailer**: A teacher can simply type *"Send attendance alerts to Section B students who missed more than 3 classes"* and the system handles the rest.
+- **Syllabus & Topic Tracking**: Real-time monitoring of module coverage linked to specific class sessions.
+- **Library Session Logging**: Automated entry/exit logging with state tracking (Active/Closed/Auto-closed).
 
-To explore the backend logic or deploy the services, refer to the individual service directories:
+---
 
-1. **`authority/`**: The Next.js 15 Gateway.
-2. **`authority_ai_service_backend/`**: The FastAPI Face ID service.
-3. **`authority_microservices/`**: The Agentic Mail & Marks service.
+## 💻 Tech Stack
+- **Frontend/Gateway**: Next.js 15, TypeScript, Tailwind CSS, Zod.
+- **Compute Backends**: Python 3.11, FastAPI, Pydantic, Uvicorn.
+- **AI/ML Core**: DeepFace, RetinaFace, ArcFace, LangGraph, Ollama.
+- **Database**: PostgreSQL, Prisma ORM.
+- **Communication**: REST, Webhooks, Google OAuth2.
+
+---
+
+## ⚙️ Setup & Installation
+
+### 1. Prerequisites
+- **Node.js 18+** & **npm/pnpm**
+- **Python 3.11+**
+- **PostgreSQL** instance
+- **Ollama** (for local LLM functionality)
+
+### 2. Core Backend Setup (`authority`)
+```bash
+cd authority
+npm install
+# Configure your .env with DATABASE_URL, AUTH_SECRET, and Microservice URLs
+npx prisma generate
+npx prisma db push
+npm run dev
+```
+
+### 3. AI Service Setup (`authority_ai_service_backend`)
+```bash
+cd authority_ai_service_backend/face-detection-pipeline
+python -m venv venv
+./venv/Scripts/activate # or source venv/bin/activate
+pip install -r requirements.txt
+python src/main.py
+```
+
+### 4. Utility Microservices Setup (`authority_microservices`)
+```bash
+cd authority_microservices
+python -m venv venv
+./venv/Scripts/activate
+pip install -r requirements.txt
+python main.py
+```
+
+---
+
+## 📖 How to Use
+1. **Enroll Students**: Go to the Student Profile and upload face samples (Front, Left, Right).
+2. **Mark Attendance**: Teachers can upload a classroom photo; the AI Service will return detected students for verification.
+3. **Upload Marks**: Use the "Job Submit" section to upload exam sheets; check the status for automated DB synchronization.
+4. **AI Communication**: Use the Mail Agent dashboard to send instructions in natural language.
 
 ---
 
 <div align="center">
-
-**Developed with 💻 & ☕ by a Performance-Driven Backend Engineer**
-
+  <p><b>Developed with 💻, ☕, and a passion for Robust Systems.</b></p>
 </div>
