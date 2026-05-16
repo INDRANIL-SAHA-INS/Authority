@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
+import { generateSnowflake } from "@/lib/snowflake";
 
 // Standardized CORS headers
 const corsHeaders = {
@@ -174,6 +175,11 @@ export async function POST(req: NextRequest) {
     today.setHours(0, 0, 0, 0);
 
     const result = await prisma.$transaction(async (tx) => {
+      // Check for existing session first to determine if we are creating or updating
+      const existingSession = await tx.attendanceSession.findUnique({
+        where: { timetable_id_session_date: { timetable_id: timetableId, session_date: today } }
+      });
+
       const session = await tx.attendanceSession.upsert({
         where: { timetable_id_session_date: { timetable_id: timetableId, session_date: today } },
         update: {
@@ -183,6 +189,7 @@ export async function POST(req: NextRequest) {
           attendance_method: "AI_FACE_RECOGNITION"
         },
         create: {
+          session_id: generateSnowflake(),
           timetable_id: timetable.timetable_id,
           teacher_id: timetable.teacher_id,
           subject_id: timetable.subject_id,
@@ -199,11 +206,23 @@ export async function POST(req: NextRequest) {
         }
       });
 
-      // Map every enrolled student to a record
+      // Map every enrolled student to a record and sync summary
       const attendanceRecords = await Promise.all(
-        enrolledStudents.map((student) => {
+        enrolledStudents.map(async (student) => {
           const isPresent = presentStudentIds.has(student.student_id);
-          return tx.attendanceRecord.upsert({
+          
+          // 1. Check if record exists for this student/session
+          const existingRecord = await tx.attendanceRecord.findUnique({
+            where: {
+              session_id_student_id: {
+                session_id: session.session_id,
+                student_id: student.student_id,
+              }
+            }
+          });
+
+          // 2. Upsert record
+          const record = await tx.attendanceRecord.upsert({
             where: {
               session_id_student_id: {
                 session_id: session.session_id,
@@ -216,6 +235,7 @@ export async function POST(req: NextRequest) {
               remarks: isPresent ? "Detected via Face Recognition" : "Not detected in class photo"
             },
             create: {
+              attendance_id: generateSnowflake(),
               session_id: session.session_id,
               student_id: student.student_id,
               attendance_status: isPresent ? "PRESENT" : "ABSENT",
@@ -223,11 +243,79 @@ export async function POST(req: NextRequest) {
               remarks: isPresent ? "Detected via Face Recognition" : "Not detected in class photo"
             }
           });
+
+          // 3. Update AttendanceSummary (ONLY if we are creating a new session or the status changed)
+          // For simplicity and accuracy, we always recalculate if the status changed OR if it's a new session.
+          if (!existingSession || !existingRecord || existingRecord.attendance_status !== record.attendance_status) {
+            const currentSummary = await tx.attendanceSummary.findUnique({
+              where: {
+                student_id_subject_id_period_id: {
+                  student_id: student.student_id,
+                  subject_id: timetable.subject_id,
+                  period_id: activePeriod.period_id
+                }
+              }
+            });
+
+            // If it's a completely new session (not an update to an existing one), increment total
+            const isNewSession = !existingSession;
+            const isNewRecord = !existingRecord;
+
+            let nTotal = currentSummary?.total_classes || 0;
+            let nAttended = currentSummary?.classes_attended || 0;
+            
+            if (isNewSession || isNewRecord) {
+              nTotal += 1;
+              if (isPresent) nAttended += 1;
+            } else {
+              // It's an update. Total classes remains same. Just check if status flipped.
+              if (existingRecord.attendance_status === "ABSENT" && isPresent) {
+                nAttended += 1;
+              } else if (existingRecord.attendance_status === "PRESENT" && !isPresent) {
+                nAttended -= 1;
+              }
+            }
+
+            const nPercentage = nTotal > 0 ? (nAttended / nTotal) * 100 : 0;
+            const nSafeBunks = nTotal > 0 ? Math.floor(nAttended / 0.8) - nTotal : 0;
+
+            await tx.attendanceSummary.upsert({
+              where: {
+                student_id_subject_id_period_id: {
+                  student_id: student.student_id,
+                  subject_id: timetable.subject_id,
+                  period_id: activePeriod.period_id
+                }
+              },
+              update: {
+                total_classes: nTotal,
+                classes_attended: nAttended,
+                classes_missed: nTotal - nAttended,
+                attendance_percentage: nPercentage,
+                safe_bunks: nSafeBunks,
+                last_updated: new Date()
+              },
+              create: {
+                summary_id: generateSnowflake(),
+                student_id: student.student_id,
+                subject_id: timetable.subject_id,
+                period_id: activePeriod.period_id,
+                total_classes: 1,
+                classes_attended: isPresent ? 1 : 0,
+                classes_missed: isPresent ? 0 : 1,
+                attendance_percentage: isPresent ? 100 : 0,
+                safe_bunks: isPresent ? 0 : -1
+              }
+            });
+          }
+
+          return record;
         })
       );
 
       return { session, attendanceRecords };
     });
+
 
     return new NextResponse(
       safeJson({

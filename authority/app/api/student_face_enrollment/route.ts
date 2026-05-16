@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { promises as fs } from "fs";
 import path from "path";
 import { getCurrentUser } from "@/lib/session";
+import { generateSnowflake } from "@/lib/snowflake";
 
 const REQUIRED_ANGLES = ["front", "left", "right"] as const;
 
@@ -14,7 +15,7 @@ const corsHeaders = {
 };
 
 // Helper for BigInt serialization
-const safeJson = (obj: any) => JSON.stringify(obj, (_, v) => typeof v === "bigint" ? v.toString() : v);
+const safeJson = (obj: unknown) => JSON.stringify(obj, (_, v) => typeof v === "bigint" ? v.toString() : v);
 
 export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
@@ -100,6 +101,7 @@ export async function POST(request: NextRequest) {
             await fs.writeFile(filePath, buffer);
 
             return {
+                face_id: generateSnowflake(),
                 student_id: studentId,
                 image_path: `/uploads/faces/${fileName}`,
                 face_encoding: JSON.stringify(pythonData.vector),
@@ -132,7 +134,9 @@ export async function POST(request: NextRequest) {
                 where: { student_id: studentId, status: "ACTIVE" },
                 data: { status: "INACTIVE" }
             }),
-            prisma.faceData.createMany({ data: savedFaces })
+            prisma.faceData.createMany({ 
+                data: savedFaces 
+            })
         ]);
 
         return new Response(safeJson({ 

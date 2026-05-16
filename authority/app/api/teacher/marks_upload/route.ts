@@ -18,21 +18,27 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
+
 export async function POST(req: NextRequest) {
   try {
-    // 1. Authorization (Bypassed if DEVELOPMENT_PHASE_ON is true)
+    // 1. Authorization (Always try to get the current user)
+    const user = await getCurrentUser(req);
     let teacherId: bigint;
 
-    if (DEVELOPMENT_PHASE_ON) {
-      // Mock teacher ID for development
-      teacherId = BigInt(1); 
-      console.log("[DEV MODE] Bypassing authentication and assignment checks.");
-    } else {
-      const user = await getCurrentUser(req);
-      if (!user || user.role !== "TEACHER") {
-        return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
-      }
+    if (user && user.role === "TEACHER") {
       teacherId = BigInt(user.profileId);
+      if (DEVELOPMENT_PHASE_ON) {
+        console.log(`[DEV MODE] Authenticated teacher found. Using teacherId: ${teacherId}`);
+      }
+    } else if (DEVELOPMENT_PHASE_ON) {
+      // Fallback to mock ID only if no user is found and we are in dev mode
+      teacherId = BigInt(1); 
+      console.log("[DEV MODE] No authenticated teacher session. Falling back to mock ID 1.");
+    } else {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401, headers: corsHeaders });
     }
     const formData = await req.formData();
     const file = formData.get("file") as File;
@@ -41,7 +47,7 @@ export async function POST(req: NextRequest) {
     const examType = formData.get("examType") as string;
 
     if (!file || !sectionId || !subjectId || !examType) {
-      return NextResponse.json({ success: false, message: "Missing required fields" }, { status: 400 });
+      return NextResponse.json({ success: false, message: "Missing required fields" }, { status: 400, headers: corsHeaders });
     }
 
     // 2. Resolve Active Period Internally
@@ -53,7 +59,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ 
         success: false, 
         message: "No active academic period found. Please contact admin." 
-      }, { status: 500 });
+      }, { status: 500, headers: corsHeaders });
     }
 
     // 3. Authorization Check (Bypassed if DEVELOPMENT_PHASE_ON is true)
@@ -71,7 +77,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ 
           success: false, 
           message: "Access Denied: You are not assigned to this subject and section." 
-        }, { status: 403 });
+        }, { status: 403, headers: corsHeaders });
       }
     }
 
@@ -119,10 +125,10 @@ export async function POST(req: NextRequest) {
       success: true, 
       message: "Upload started successfully.",
       jobId: job.job_id 
-    });
+    }, { headers: corsHeaders });
 
   } catch (error: any) {
     console.error("[MarksUpload API Error]:", error);
-    return NextResponse.json({ success: false, message: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ success: false, message: "Internal server error" }, { status: 500, headers: corsHeaders });
   }
 }

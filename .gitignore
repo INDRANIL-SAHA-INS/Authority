@@ -65,3 +65,7 @@ dist/
 build/
 bin/
 obj/
+
+# Project Documentation (Internal)
+# ------------------------------------------------------------------------------
+authority/all_md_folders/

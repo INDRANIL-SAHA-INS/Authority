@@ -67,13 +67,16 @@ def send_email(to_email, subject, body):
         'raw': encoded_message
     }
 
-    # Send email
-    service.users().messages().send(
-        userId='me',
-        body=create_message
-    ).execute()
-
-    print("✅ Email sent successfully!")
+    try:
+        # Send email
+        service.users().messages().send(
+            userId='me',
+            body=create_message
+        ).execute()
+        print(f"✅ Email sent successfully to {to_email}!")
+    except Exception as e:
+        print(f"❌ [GMAIL ERROR] Failed to send to {to_email}: {e}")
+        raise e
 
 
 
@@ -93,8 +96,13 @@ def fetch_students_by_ids(subject_id: str, section_id: str, student_ids: List[st
     }
     
     try:
+        print(f"\n📡 [DB_FETCH]: Requesting specific students from Next.js...")
+        print(f"🔗 URL: {api_url}")
+        print(f"📦 Payload: {payload}")
+        
         # Send POST request to API
         response = requests.post(api_url, json=payload)
+        print(f"✅ [DB_FETCH]: Response Status: {response.status_code}")
         response.raise_for_status()  # Raise exception for bad status codes
         
         # Parse response
@@ -114,19 +122,19 @@ def fetch_students_by_ids(subject_id: str, section_id: str, student_ids: List[st
                     
                     # Map API response to StudentRecord fields
                     student_record = StudentRecord(
-                        university_roll_number=student_data.get("university_roll_number", ""),
-                        first_name=student_data.get("first_name", ""),
-                        last_name=student_data.get("last_name", ""),
-                        gender=student_data.get("gender", ""),
-                        email=student_data.get("email", ""),
-                        father_name=student_data.get("father_name", ""),
-                        guardian_email=student_data.get("guardian_email", ""),
-                        subject_id=attendance_details.get("subject_id", subject_id),
-                        total_sessions=attendance_details.get("total_sessions", 0),
-                        attended_sessions=attendance_details.get("attended_sessions", 0),
-                        attendance_percentage=float(attendance_details.get("attendance_percentage", 0)),
-                        is_short_attendance=attendance_details.get("is_short_attendance", False),
-                        target_threshold=float(attendance_details.get("target_threshold", attendance_threshold))
+                        university_roll_number=str(student_data.get("university_roll_number") or ""),
+                        first_name=str(student_data.get("first_name") or ""),
+                        last_name=str(student_data.get("last_name") or ""),
+                        gender=str(student_data.get("gender") or ""),
+                        email=str(student_data.get("email") or ""),
+                        father_name=str(student_data.get("father_name") or ""),
+                        guardian_email=str(student_data.get("guardian_email") or ""),
+                        subject_id=str(attendance_details.get("subject_id") or subject_id),
+                        total_sessions=int(attendance_details.get("total_sessions") or 0),
+                        attended_sessions=int(attendance_details.get("attended_sessions") or 0),
+                        attendance_percentage=float(attendance_details.get("attendance_percentage") or 0),
+                        is_short_attendance=bool(attendance_details.get("is_short_attendance") or False),
+                        target_threshold=float(attendance_details.get("target_threshold") or attendance_threshold)
                     )
                     students.append(student_record)
                 except Exception as e:
@@ -139,19 +147,19 @@ def fetch_students_by_ids(subject_id: str, section_id: str, student_ids: List[st
                 try:
                     attendance_details = student_data.get("attendance_details", {})
                     student_record = StudentRecord(
-                        university_roll_number=student_data.get("university_roll_number", ""),
-                        first_name=student_data.get("first_name", ""),
-                        last_name=student_data.get("last_name", ""),
-                        gender=student_data.get("gender", ""),
-                        email=student_data.get("email", ""),
-                        father_name=student_data.get("father_name", ""),
-                        guardian_email=student_data.get("guardian_email", ""),
-                        subject_id=attendance_details.get("subject_id", subject_id),
-                        total_sessions=attendance_details.get("total_sessions", 0),
-                        attended_sessions=attendance_details.get("attended_sessions", 0),
-                        attendance_percentage=float(attendance_details.get("attendance_percentage", 0)),
-                        is_short_attendance=attendance_details.get("is_short_attendance", False),
-                        target_threshold=float(attendance_details.get("target_threshold", attendance_threshold))
+                        university_roll_number=str(student_data.get("university_roll_number") or ""),
+                        first_name=str(student_data.get("first_name") or ""),
+                        last_name=str(student_data.get("last_name") or ""),
+                        gender=str(student_data.get("gender") or ""),
+                        email=str(student_data.get("email") or ""),
+                        father_name=str(student_data.get("father_name") or ""),
+                        guardian_email=str(student_data.get("guardian_email") or ""),
+                        subject_id=str(attendance_details.get("subject_id") or subject_id),
+                        total_sessions=int(attendance_details.get("total_sessions") or 0),
+                        attended_sessions=int(attendance_details.get("attended_sessions") or 0),
+                        attendance_percentage=float(attendance_details.get("attendance_percentage") or 0),
+                        is_short_attendance=bool(attendance_details.get("is_short_attendance") or False),
+                        target_threshold=float(attendance_details.get("target_threshold") or attendance_threshold)
                     )
                     students.append(student_record)
                 except Exception as e:
@@ -184,8 +192,13 @@ def fetch_students_below_attendance(subject_id: str, section_id: str, threshold:
     }
     
     try:
+        print(f"\n📡 [DB_FETCH]: Requesting threshold-based students from Next.js...")
+        print(f"🔗 URL: {api_url}")
+        print(f"📦 Payload: {payload}")
+
         # Send POST request to API
         response = requests.post(api_url, json=payload)
+        print(f"✅ [DB_FETCH]: Response Status: {response.status_code}")
         response.raise_for_status()  # Raise exception for bad status codes
         
         # Parse response
@@ -205,19 +218,19 @@ def fetch_students_below_attendance(subject_id: str, section_id: str, threshold:
                     
                     # Map API response to StudentRecord fields
                     student_record = StudentRecord(
-                        university_roll_number=student_data.get("university_roll_number", ""),
-                        first_name=student_data.get("first_name", ""),
-                        last_name=student_data.get("last_name", ""),
-                        gender=student_data.get("gender", ""),
-                        email=student_data.get("email", ""),
-                        father_name=student_data.get("father_name", ""),
-                        guardian_email=student_data.get("guardian_email", ""),
-                        subject_id=attendance_details.get("subject_id", subject_id),
-                        total_sessions=attendance_details.get("total_sessions", 0),
-                        attended_sessions=attendance_details.get("attended_sessions", 0),
-                        attendance_percentage=float(attendance_details.get("attendance_percentage", 0)),
-                        is_short_attendance=attendance_details.get("is_short_attendance", False),
-                        target_threshold=float(attendance_details.get("target_threshold", threshold))
+                        university_roll_number=str(student_data.get("university_roll_number") or ""),
+                        first_name=str(student_data.get("first_name") or ""),
+                        last_name=str(student_data.get("last_name") or ""),
+                        gender=str(student_data.get("gender") or ""),
+                        email=str(student_data.get("email") or ""),
+                        father_name=str(student_data.get("father_name") or ""),
+                        guardian_email=str(student_data.get("guardian_email") or ""),
+                        subject_id=str(attendance_details.get("subject_id") or subject_id),
+                        total_sessions=int(attendance_details.get("total_sessions") or 0),
+                        attended_sessions=int(attendance_details.get("attended_sessions") or 0),
+                        attendance_percentage=float(attendance_details.get("attendance_percentage") or 0),
+                        is_short_attendance=bool(attendance_details.get("is_short_attendance") or False),
+                        target_threshold=float(attendance_details.get("target_threshold") or threshold)
                     )
                     students.append(student_record)
                 except Exception as e:

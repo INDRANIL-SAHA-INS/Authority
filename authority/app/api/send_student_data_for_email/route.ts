@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       first_name: string | null;
       last_name: string | null;
       gender: string | null;
-      email: string | null;
+      user: { email: string } | null;
       guardian: {
         father_name: string | null;
         email: string | null;
@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
         },
         include: {
           guardian: true,
+          user: { select: { email: true } },
           attendance_summaries: { where: { subject_id: subjectId } }
         }
       });
@@ -61,12 +62,16 @@ export async function POST(request: NextRequest) {
           attendance_summaries: {
             some: {
               subject_id: subjectId,
-              attendance_percentage: { lte: threshold }
+              attendance_percentage: { 
+                gte: threshold - 0.5,
+                lte: threshold + 0.5
+              }
             }
           }
         },
         include: {
           guardian: true,
+          user: { select: { email: true } },
           attendance_summaries: { where: { subject_id: subjectId } }
         }
       });
@@ -116,7 +121,7 @@ export async function POST(request: NextRequest) {
       // Fetch student details to build the response
       const fallbackDetails = await prisma.student.findMany({
         where: { student_id: { in: studentIdsToProcess }, section_id: sectionId },
-        include: { guardian: true }
+        include: { guardian: true, user: { select: { email: true } } }
       });
 
       // Map the results to our final clean format
@@ -130,7 +135,7 @@ export async function POST(request: NextRequest) {
           first_name: student.first_name,
           last_name: student.last_name,
           gender: student.gender,
-          email: student.email,
+          email: student.user?.email || null,
           father_name: student.guardian?.father_name || null,
           guardian_email: student.guardian?.email || null,
           attendance_details: {
@@ -139,7 +144,7 @@ export async function POST(request: NextRequest) {
             attended_sessions: attended,
             attendance_percentage: percentage,
             safe_bunks: Math.floor(attended / 0.8) - totalSessions,
-            is_short_attendance: threshold !== null ? percentage <= threshold : null,
+            is_short_attendance: threshold !== null ? (percentage >= threshold - 0.5 && percentage <= threshold + 0.5) : null,
             target_threshold: threshold,
             source: "manual_calculation"
           }
@@ -168,7 +173,7 @@ export async function POST(request: NextRequest) {
         first_name: student.first_name,
         last_name: student.last_name,
         gender: student.gender,
-        email: student.email,
+        email: student.user?.email || null,
         father_name: student.guardian?.father_name || null,
         guardian_email: student.guardian?.email || null,
         attendance_details: {
@@ -177,7 +182,7 @@ export async function POST(request: NextRequest) {
           attended_sessions: summary?.classes_attended || 0,
           attendance_percentage: percentage,
           safe_bunks: summary?.safe_bunks || 0,
-          is_short_attendance: threshold !== null ? percentage <= threshold : null,
+          is_short_attendance: threshold !== null ? (percentage >= threshold - 0.5 && percentage <= threshold + 0.5) : null,
           target_threshold: threshold,
           source: "attendance_summary"
         }

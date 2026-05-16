@@ -38,13 +38,15 @@ CRITICAL RULES:
 2. If the teacher mentions a subject name (e.g. 'Artificial Intelligence'), you MUST find its corresponding 'subject_id' and 'section_id' from the context table.
 3. Return all IDs (subject_id, section_id, student_ids) as STRINGS (e.g. "6", not 6).
 4. section_id and subject_id are REQUIRED.
+5. NEVER put a subject_id or section_id into the "student_ids" list.
+6. "student_ids" should ONLY be used if the teacher mentions specific student names (e.g. "Rahul") or roll numbers. If they say "all students" or "the whole class", leave "student_ids" EMPTY and set query_type = "whole_class".
 
 - If one student is mentioned -> set query_type = "single_student"
 - If multiple students are mentioned -> set query_type = "multiple_students"
 - If teacher says "all students" or "whole class" -> set query_type = "whole_class"
-- If threshold like "below 85%" is mentioned -> set query_type = "threshold_based"
+- If threshold like "85%" is mentioned -> set query_type = "threshold_based"
 
-- Extract student IDs into "student_ids" as a list of strings.
+- Extract student IDs into "student_ids" as a list of strings (ONLY if specific students are named).
 - Extract reason into "reason": "attendance", "marks", or "both".
 - Default attendance_threshold = 85.0 if not specified.
 

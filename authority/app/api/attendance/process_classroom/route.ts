@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import fs from "fs";
 import path from "path";
+import { generateSnowflake } from "@/lib/snowflake";
 
 // Euclidean distance helper for face matching (L2 Norm)
 function calculateEuclideanDistance(v1: number[], v2: number[]): number {
@@ -107,6 +108,7 @@ export async function POST(request: NextRequest) {
             },
             update: { class_photo_url: photoUrl },
             create: {
+                session_id: generateSnowflake(),
                 timetable_id: BigInt(timetable_id),
                 session_date: new Date(new Date().setHours(0, 0, 0, 0)),
                 class_photo_url: photoUrl,
@@ -146,6 +148,7 @@ export async function POST(request: NextRequest) {
                 },
                 update: { attendance_status: isPresent ? "PRESENT" : "ABSENT", captured_face_url: localProofUrl },
                 create: {
+                    attendance_id: generateSnowflake(),
                     session_id: session.session_id,
                     student_id: student.student_id,
                     attendance_status: isPresent ? "PRESENT" : "ABSENT",
@@ -187,6 +190,7 @@ export async function POST(request: NextRequest) {
                     last_updated: new Date()
                 },
                 create: {
+                    summary_id: generateSnowflake(),
                     student_id: student.student_id,
                     subject_id: timetable.subject_id,
                     period_id: timetable.period_id,
@@ -201,6 +205,7 @@ export async function POST(request: NextRequest) {
 
         return session;
     });
+
 
     const safeStringify = (obj: any) =>
       JSON.stringify(obj, (key, value) => (typeof value === "bigint" ? value.toString() : value));

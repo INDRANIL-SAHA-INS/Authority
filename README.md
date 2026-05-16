@@ -1,60 +1,127 @@
 <div align="center">
-  <h1>🏛️ Authority</h1>
-  <h3>The Next-Generation Agent-Driven College Automation System</h3>
-  <p><i>Evolving monolithic college management software into an intelligent, autonomous, and proactive AI ecosystem.</i></p>
+
+# 🏛️ AUTHORITY
+### *The Intelligent Neural Core for Modern Campus Governance*
+
+[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-v0.109-05998b?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
+[![Prisma](https://img.shields.io/badge/Prisma-ORM-2d3748?style=for-the-badge&logo=prisma)](https://www.prisma.io/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-v16-336791?style=for-the-badge&logo=postgresql)](https://www.postgresql.org/)
+[![Python](https://img.shields.io/badge/Python-v3.11-3776ab?style=for-the-badge&logo=python)](https://www.python.org/)
+[![LangGraph](https://img.shields.io/badge/LangGraph-Agentic-blue?style=for-the-badge&logo=langchain)](https://github.com/langchain-ai/langgraph)
+
+---
+
+**Authority** is not just a management system; it is a distributed, high-performance ecosystem engineered to redefine academic administration through **Computer Vision**, **Agentic AI**, and **Distributed System Architectures**.
+
+[**Explore the Vision**](#-architectural-pillars) • [**Core Features**](#-engineered-excellence) • [**System Architecture**](#-the-neural-map)
+
 </div>
 
 ---
 
-## 🌟 Overview
+## 🏛️ The Neural Map: System Architecture
 
-Welcome to **Authority**, a revolutionary paradigm shift in how educational institutions operate. Authority is not merely another dashboard where data is passively entered and forgotten. It is a fully interconnected, automation-first ecosystem powered by sophisticated Artificial Intelligence and Multi-Agent Systems. 
+Authority is built on a **Three-Tier Microservice Topology**, ensuring that compute-intensive AI tasks never bottleneck the mission-critical core management logic.
 
-This project transforms the old, static college management experience into a dynamic, "living" system that actively works *for* its students, teachers, and administrators.
+![Detailed System Architecture](authority/all_md_folders/system_architecture_detailed.png)
 
----
-
-## 🎯 The Problem We Solve
-
-For decades, the standard College Management System (CMS) has suffered from massive inefficiencies:
-- **Manual Data Entry:** Faculty losing hundreds of hours manually marking attendance or sending announcement emails.
-- **Disconnected Student Lifecycle:** A student's academic journey ends at the database; applying for jobs and internships is completely isolated from their college data. 
-- **Passive Architecture:** Systems that wait for a human to click a button to initiate actions.
-
-**Authority solves this** by injecting autonomy into the veins of the institution. We replace manual clicks with autonomous agents, static records with dynamic biometric verification, and stressful job hunts with algorithmic precision.
+> [!NOTE]
+> The system orchestrates requests across a **Next.js Gateway**, a **FastAPI Compute Node**, and an **Agentic Utility Microservice**, communicating via low-latency REST and secure webhooks.
 
 ---
 
-## 🧠 Enter the Agents: How AI is Changing the Game
+## 🚀 Architectural Pillars
 
-Authority utilizes distinct, specialized AI agents and pipelines working harmoniously in the background to automate the heaviest lifting of university life.
+### 1. The Gateway (`authority`)
+The central orchestrator built with **Next.js 15**. It handles the "Business Brain" of the system.
+- **State Management**: Prisma ORM with PostgreSQL for complex relational integrity.
+- **Edge Security**: JWT-based session management and Middleware-level protection.
+- **Orchestration**: Directing traffic to specialized AI nodes via secure handshakes.
 
-### 💼 1. Autonomous Job Application Agent
-Applying for placements and internships is one of the most stressful parts of a student's journey—until now. Our **LangGraph-powered Job Agent** acts as an indefatigable personal recruiter for every student. 
-* **Dynamic Perception:** It navigates complex web pages and scraping real-time job postings.
-* **Intelligent Understanding:** It reads hidden web form fields, ARIA roles, and drop-downs.
-* **Contextual Actions:** It intercepts the student's base resume, uses an LLM to generate a customized, tailored CV based on the job description, and automatically fills and submits the job application seamlessly.
+### 2. The Vision Node (`authority_ai_service_backend`)
+A high-performance **FastAPI** environment dedicated to spatial compute.
+- **Face ID Pipeline**: Uses **RetinaFace** for detection and **ArcFace** for generating 512-dimensional facial embeddings.
+- **Real-time Verification**: Sub-second matching of students for automated attendance.
+- **Normalization Engine**: Validates and aligns face samples across Front, Left, and Right angles.
 
-### 📧 2. AI-Driven Communication Agent
-Say goodbye to robotic, generic college newsletters and manual notification blasts. The **Authority Comms Agent** constantly monitors the heartbeat of the college database.
-* By analyzing schedules, student behavior, or system alerts, it autonomously formulates highly personalized, human-like emails.
-* It knows *exactly* when to notify a teacher of a class adjustment or remind a student of an impending deadline, dispatching the message directly to their inbox with zero human intervention.
-
-### 👁️ 3. Computer Vision & Face Detection Pipeline
-The days of shouting roll calls or swiping forgotten ID cards are over. We have implemented an advanced **Python-based FastAPI Face Verification Backend**.
-* **Seamless Enrollment:** Students map their facial biometrics directly into the authority system securely.
-* **Frictionless Verification:** Built for real-time presence, this component serves as the foundation for automated attendance, library access, and secure exam authentication—all happening in the blink of an eye.
-
----
-
-## 🧩 The Core Infrastructure
-
-Beyond AI, Authority rests on a powerful, modern tech stack designed for speed and reliability:
-* **The Command Center (`authority`):** A beautiful, responsive full-stack **Next.js** application serving as the nerve center. It features intricate scheduling engines (like complex weekly teacher timetables) bound by a robust **Prisma + PostgreSQL** database architecture.
-* **Library QR Logistics:** A dedicated Python toolset instantly bridges the physical-to-digital gap by generating smart QR ecosystems for library resources.
+### 3. The Agentic Worker (`authority_microservices`)
+The "Smart Utility" layer powered by **LangGraph** and Local LLMs.
+- **Intelligent Mail Agent**: A goal-oriented agent that processes natural language (e.g., *"Notify all parents of low-attendance students"*) autonomously.
+- **Marks Extraction**: OCR-based pipeline with AI schema discovery to parse grading sheets from PDF/Excel/CSV.
 
 ---
 
-## 🚀 The Paradigm Shift
+## 💎 Engineered Excellence
 
-Authority is more than a software upgrade—it is a philosophical shift in educational administration. By converting the old college management system to an **Agent-Driven Automation System**, Authority proves that a campus can run efficiently, intelligently, and autonomously in the background, allowing students to focus on learning and educators to focus on teaching. 
+As a backend-first ecosystem, Authority implements industry-standard patterns to ensure robustness:
+
+### ❄️ Snowflake ID Generation
+We avoid predictable auto-incrementing IDs. Every record in Authority is assigned a **64-bit Snowflake ID**, ensuring globally unique, time-ordered identifiers across distributed services.
+
+### 🛡️ Type-Safe API Boundaries
+- **Zod (Frontend/Gateway)**: Strict runtime schema validation for every incoming request.
+- **Pydantic (Python Microservices)**: Data modeling with strict type enforcement and validation.
+
+### 🔄 Transactional Atomic Operations
+Using **Prisma Transactions**, we ensure that complex operations—like simultaneous face enrollment across three angles or multi-student attendance processing—either succeed entirely or fail gracefully without data corruption.
+
+---
+
+## 🖼️ Feature Spotlights
+
+### 🎭 AI Face Enrollment Workflow
+Ensuring identity integrity starts with a robust enrollment. Our pipeline processes multi-angle captures to build a comprehensive biometric profile.
+
+![Face Enrollment Workflow](authority/all_md_folders/face_enrollment_architecture.png)
+
+### ✉️ Agentic Institutional Communication
+The **Mail Agent** uses a local **Gemma 3:4b** model via Ollama, integrated into a LangGraph workflow to handle complex institutional messaging tasks with human-like understanding.
+
+---
+
+## 🛠️ Tech Stack & Methods
+
+<table align="center">
+  <tr>
+    <td align="center" width="33%">
+      <b>Core Backend</b><br>
+      Next.js 15 (App Router)<br>
+      Prisma ORM<br>
+      PostgreSQL<br>
+      Auth.js / JWT
+    </td>
+    <td align="center" width="33%">
+      <b>AI & Computer Vision</b><br>
+      FastAPI / Python<br>
+      DeepFace / ArcFace<br>
+      RetinaFace Detector<br>
+      PyTorch
+    </td>
+    <td align="center" width="33%">
+      <b>Agentic AI</b><br>
+      LangGraph / LangChain<br>
+      Ollama (Gemma 3:4b)<br>
+      Google Gmail OAuth<br>
+      Tesseract OCR
+    </td>
+  </tr>
+</table>
+
+---
+
+## 📜 Development & Setup
+
+To explore the backend logic or deploy the services, refer to the individual service directories:
+
+1. **`authority/`**: The Next.js 15 Gateway.
+2. **`authority_ai_service_backend/`**: The FastAPI Face ID service.
+3. **`authority_microservices/`**: The Agentic Mail & Marks service.
+
+---
+
+<div align="center">
+
+**Developed with 💻 & ☕ by a Performance-Driven Backend Engineer**
+
+</div>

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 
+import { generateSnowflake } from "@/lib/snowflake";
+
 // Standardized CORS headers for Mobile/Web compatibility
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -65,6 +67,7 @@ export async function POST(req: NextRequest) {
       // 2. Create the new session
       const newLog = await prisma.libraryVisitLog.create({
         data: {
+          library_log_id: generateSnowflake(),
           user_id: userId,
           library_entry_at: new Date(),
           library_session_state: "ACTIVE",

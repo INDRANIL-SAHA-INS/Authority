@@ -58,7 +58,7 @@ class StudentQueryIntent(BaseModel):
 
     attendance_threshold: Optional[float] = Field(
         default=85.0,
-        description="Send email to students BELOW this attendance %. Default 85."
+        description="Send email to students EQUAL to this attendance %. Default 85."
     )
 
     query_type: TargetType = Field(
